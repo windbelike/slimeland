@@ -16,6 +16,8 @@ interface Toast {
   message: string;
 }
 
+type SortMode = 'startTime' | 'timeLeft';
+
 const DEFAULT_HOURS = 2;
 const DEFAULT_MINUTES = 0;
 const STORAGE_KEY = 'countdown-timers';
@@ -34,6 +36,7 @@ export default function Home() {
   const [hours, setHours] = useState(DEFAULT_HOURS);
   const [minutes, setMinutes] = useState(DEFAULT_MINUTES);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [sortMode, setSortMode] = useState<SortMode>('startTime');
 
   useEffect(() => {
     try {
@@ -151,6 +154,20 @@ export default function Home() {
     return `${hours}:${minutes}`;
   };
 
+  const getSortedTimers = () => {
+    return [...timers].sort((a, b) => {
+      if (sortMode === 'startTime') {
+        return a.startTime - b.startTime; // Oldest first
+      } else {
+        return a.timeLeft - b.timeLeft; // Least time remaining first
+      }
+    });
+  };
+
+  const toggleSortMode = () => {
+    setSortMode(prev => prev === 'startTime' ? 'timeLeft' : 'startTime');
+  };
+
   return (
     <main className="flex min-h-screen flex-col items-center p-4 sm:p-8 bg-gradient-to-b from-[#E7F5F3] to-[#FFFFFF]">
       <div className="fixed top-4 right-4 z-50 flex flex-col gap-2">
@@ -251,62 +268,84 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="w-full max-w-5xl flex flex-col gap-4">
-        {timers.map(timer => (
-          <div 
-            key={timer.id} 
-            className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between p-6 rounded-2xl shadow-lg gap-4 sm:gap-6 transition-all duration-300 hover:scale-[1.01] relative overflow-hidden"
+      <div className="w-full max-w-5xl">
+        <div className="flex justify-end mb-4">
+          <button
+            onClick={toggleSortMode}
+            className="px-4 py-2 text-sm sm:text-base font-[500] rounded-full transition-all duration-300 hover:scale-105 active:scale-95 flex items-center gap-2"
             style={{ 
-              backgroundColor: 'white',
-              border: `2px solid ${SLIME_COLOR.secondary}`,
+              backgroundColor: SLIME_COLOR.secondary,
+              color: SLIME_COLOR.text,
             }}
           >
+            {sortMode === 'startTime' ? '⏰' : '⏳'}
+          </button>
+        </div>
+        
+        <div className="flex flex-col gap-4">
+          {getSortedTimers().map(timer => (
             <div 
-              className="absolute top-0 left-0 h-full transition-all duration-300"
+              key={timer.id} 
+              className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between p-6 rounded-2xl shadow-lg gap-4 sm:gap-6 transition-all duration-300 hover:scale-[1.01] relative overflow-hidden"
               style={{ 
-                width: `${(timer.timeLeft / (timer.initialTime || 1)) * 100}%`,
-                backgroundColor: SLIME_COLOR.primary,
-                opacity: 0.1,
+                backgroundColor: 'white',
+                border: `2px solid ${SLIME_COLOR.secondary}`,
               }}
-            />
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 relative">
-              <h2 className="text-xl sm:text-2xl font-[600] capitalize" style={{ color: SLIME_COLOR.text }}>
-                {timer.name}
-              </h2>
-              {timer.timeLeft === 0 && (
+            >
+              <div 
+                className="absolute top-0 left-0 h-full transition-all duration-300"
+                style={{ 
+                  width: `${(timer.timeLeft / (timer.initialTime || 1)) * 100}%`,
+                  backgroundColor: SLIME_COLOR.primary,
+                  opacity: 0.1,
+                }}
+              />
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 relative">
+                <h2 className="text-xl sm:text-2xl font-[600] capitalize" style={{ color: SLIME_COLOR.text }}>
+                  {timer.name}
+                </h2>
                 <div className="flex gap-2 items-center">
-                  <div className="" style={{ backgroundColor: SLIME_COLOR.primary }} />
-                  <p className="text-sm font-[500]" style={{ color: SLIME_COLOR.primary }}>
-                    Time's up! (Started at {formatStartTime(timer.startTime)})
+                  <div className="w-2 h-2 rounded-full animate-pulse" 
+                    style={{ 
+                      backgroundColor: timer.timeLeft === 0 ? '#ff6b6b' : SLIME_COLOR.primary 
+                    }} 
+                  />
+                  <p className="text-sm font-[500]" 
+                    style={{ 
+                      color: timer.timeLeft === 0 ? '#ff6b6b' : SLIME_COLOR.primary,
+                      fontWeight: timer.timeLeft === 0 ? '600' : '500'
+                    }}
+                  >
+                    {timer.timeLeft === 0 ? "Time's up! started at " + formatStartTime(timer.startTime) : "Started at " + formatStartTime(timer.startTime)}
                   </p>
                 </div>
-              )}
-            </div>
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 w-full sm:w-auto relative">
-              <div className="text-3xl sm:text-4xl font-[500] tracking-wider" style={{ color: SLIME_COLOR.dark }}>
-                {formatTime(timer.timeLeft)}
               </div>
-              <div className="flex gap-2 w-full sm:w-auto">
-                <button
-                  onClick={() => handleResetTimer(timer.id)}
-                  className="px-4 py-2 text-sm sm:text-base font-[500] rounded-full transition-all duration-300 flex-1 sm:flex-initial hover:scale-105 active:scale-95"
-                  style={{ 
-                    backgroundColor: SLIME_COLOR.secondary,
-                    color: SLIME_COLOR.text,
-                  }}
-                >
-                  Reset
-                </button>
-                <button
-                  onClick={() => handleRemoveTimer(timer.id)}
-                  className="px-4 py-2 text-sm sm:text-base font-[500] rounded-full transition-all duration-300 flex-1 sm:flex-initial hover:scale-105 active:scale-95 bg-red-100 text-red-500 hover:bg-red-200"
-                >
-                  Remove
-                </button>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 w-full sm:w-auto relative">
+                <div className="text-3xl sm:text-4xl font-[500] tracking-wider" style={{ color: SLIME_COLOR.dark }}>
+                  {formatTime(timer.timeLeft)}
+                </div>
+                <div className="flex gap-2 w-full sm:w-auto">
+                  <button
+                    onClick={() => handleResetTimer(timer.id)}
+                    className="px-4 py-2 text-sm sm:text-base font-[500] rounded-full transition-all duration-300 flex-1 sm:flex-initial hover:scale-105 active:scale-95"
+                    style={{ 
+                      backgroundColor: SLIME_COLOR.secondary,
+                      color: SLIME_COLOR.text,
+                    }}
+                  >
+                    Reset
+                  </button>
+                  <button
+                    onClick={() => handleRemoveTimer(timer.id)}
+                    className="px-4 py-2 text-sm sm:text-base font-[500] rounded-full transition-all duration-300 flex-1 sm:flex-initial hover:scale-105 active:scale-95 bg-red-100 text-red-500 hover:bg-red-200"
+                  >
+                    Remove
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
       {timers.length === 0 && (
         <div className="text-center mt-8">
