@@ -1,31 +1,46 @@
-// Short "ding" sound in base64 format
-export const DING_SOUND = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAASAAAeMwAUFBQUFCIiIiIiIjAwMDAwPz8/Pz8/TU1NTU1bbW1tbW15eXl5eXmHh4eHh4+Pj4+Pj56enp6enqampqamprS0tLS0tMPDw8PDw9HR0dHR0d/f39/f39/f39/f6urq6urq9PT09PT///////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAHjOZTf9/AAAAAAAAAAAAAAAA//tQZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAASAAAeMwAUFBQUFCIiIiIiIjAwMDAwPz8/Pz8/TU1NTU1bbW1tbW15eXl5eXmHh4eHh4+Pj4+Pj56enp6enqampqamprS0tLS0tMPDw8PDw9HR0dHR0d/f39/f39/f39/f6urq6urq9PT09PT///////////////8AAAAATGF2ZTU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAAAAAAAAAAP/7UGQAAANUAUi0AAACAAACkAAAABAAABpAAAACAAADSAAAAETEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV';
-
-// Create a single AudioContext instance
 let audioContext: AudioContext | null = null;
-if (typeof window !== 'undefined') {
-  audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-}
-
-let isAudioUnlocked = false;
-
-// Function to unlock audio on user interaction
-export const unlockAudio = () => {
-  if (audioContext && audioContext.state === 'suspended') {
-    audioContext.resume();
-  }
-  isAudioUnlocked = true;
-};
 
 export const playDingSound = () => {
-    console.log('Playing ding sound');
-  if (!isAudioUnlocked || !audioContext) {
-    console.log('Audio not unlocked yet.');
-    return;
+  try {
+    if (!audioContext) {
+      audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+
+    // Create oscillators for the iPhone message sound
+    const osc1 = audioContext.createOscillator();
+    const osc2 = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    // Configure oscillators
+    osc1.type = 'sine';
+    osc2.type = 'triangle';
+    
+    // iPhone message frequencies
+    osc1.frequency.setValueAtTime(1020, audioContext.currentTime);
+    osc1.frequency.setValueAtTime(1220, audioContext.currentTime + 0.1);
+    
+    osc2.frequency.setValueAtTime(1020, audioContext.currentTime);
+    osc2.frequency.setValueAtTime(1220, audioContext.currentTime + 0.1);
+
+    // Configure gain (volume envelope)
+    gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+    gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.005);
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime + 0.1);
+    gainNode.gain.linearRampToValueAtTime(0.2, audioContext.currentTime + 0.15);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.3);
+
+    // Connect nodes
+    osc1.connect(gainNode);
+    osc2.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    // Play sound
+    osc1.start(audioContext.currentTime);
+    osc2.start(audioContext.currentTime);
+    osc1.stop(audioContext.currentTime + 0.3);
+    osc2.stop(audioContext.currentTime + 0.3);
+
+  } catch (error) {
+    console.error('Error playing sound:', error);
   }
-  
-  const audio = new Audio(DING_SOUND);
-  audio.play().catch(error => {
-    console.log('Audio playback failed:', error);
-  });
 }; 

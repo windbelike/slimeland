@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { playDingSound, unlockAudio } from './sounds';
+import { playDingSound } from './sounds';
 
 interface Timer {
   id: number;
@@ -84,12 +84,7 @@ export default function Home() {
     }, 3000);
   };
   
-  const handleUserInteraction = () => {
-    unlockAudio();
-  };
-
   const handleAddTimer = () => {
-    handleUserInteraction();
     const trimmedName = inputName.trim().slice(0, 20);
     if (trimmedName === '') return;
 
@@ -112,11 +107,6 @@ export default function Home() {
     setHours(DEFAULT_HOURS);
     setMinutes(DEFAULT_MINUTES);
   };
-  
-  const handleTestSound = () => {
-    handleUserInteraction();
-    playDingSound();
-  }
 
   const handleRemoveTimer = (id: number) => {
     setTimers(prevTimers => prevTimers.filter(timer => timer.id !== id));
@@ -254,22 +244,6 @@ export default function Home() {
             Add Timer
             <div className="absolute top-0 left-0 w-full h-1 bg-white/20 rounded-full" />
           </button>
-          <button 
-            onClick={handleTestSound}
-            className="px-4 py-2 text-base sm:text-lg font-[600] rounded-full transition-all duration-300 hover:scale-[1.02] hover:shadow-lg active:scale-95 relative overflow-hidden"
-            style={{ 
-              backgroundColor: SLIME_COLOR.secondary,
-              color: SLIME_COLOR.text,
-            }}
-          >
-            🔔
-            <div className="absolute top-0 left-0 w-full h-1 bg-white/20 rounded-full" />
-          </button>
-        </div>
-      </div>
-
-      <div className="w-full max-w-5xl">
-        <div className="flex justify-end mb-4">
           <button
             onClick={toggleSortMode}
             className="px-4 py-2 text-sm sm:text-base font-[500] rounded-full transition-all duration-300 hover:scale-105 active:scale-95 flex items-center gap-2"
@@ -281,6 +255,9 @@ export default function Home() {
             {sortMode === 'startTime' ? '⏰' : '⏳'}
           </button>
         </div>
+      </div>
+
+      <div className="w-full max-w-5xl">
         
         <div className="flex flex-col gap-4">
           {getSortedTimers().map(timer => (
@@ -301,8 +278,11 @@ export default function Home() {
                 }}
               />
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 relative">
-                <h2 className="text-xl sm:text-2xl font-[600] capitalize" style={{ color: SLIME_COLOR.text }}>
+                <h2 className="text-xl sm:text-2xl font-[600] capitalize flex items-center gap-2" style={{ color: SLIME_COLOR.text }}>
                   {timer.name}
+                  <span className="text-sm font-[400] opacity-60">
+                    ({formatTime(timer.initialTime)})
+                  </span>
                 </h2>
                 <div className="flex gap-2 items-center">
                   <div className="w-2 h-2 rounded-full animate-pulse" 
