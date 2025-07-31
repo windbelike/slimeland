@@ -1,103 +1,209 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useEffect } from 'react';
+
+interface Timer {
+  id: number;
+  name: string;
+  timeLeft: number;
+  initialTime: number;
+}
+
+const DEFAULT_HOURS = 2;
+const DEFAULT_MINUTES = 0;
+const STORAGE_KEY = 'countdown-timers';
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [timers, setTimers] = useState<Timer[]>([]);
+  const [inputName, setInputName] = useState('');
+  const [hours, setHours] = useState(DEFAULT_HOURS);
+  const [minutes, setMinutes] = useState(DEFAULT_MINUTES);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+  // 从 localStorage 加载数据
+  useEffect(() => {
+    const savedTimers = localStorage.getItem(STORAGE_KEY);
+    if (savedTimers) {
+      setTimers(JSON.parse(savedTimers));
+    }
+  }, []);
+
+  // 保存数据到 localStorage
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(timers));
+  }, [timers]);
+
+  // 计时器逻辑
+  useEffect(() => {
+    if (timers.some(timer => timer.timeLeft > 0)) {
+      const interval = setInterval(() => {
+        setTimers(prevTimers => {
+          const updatedTimers = prevTimers.map(timer => {
+            if (timer.timeLeft > 0) {
+              return { ...timer, timeLeft: timer.timeLeft - 1 };
+            }
+            return timer;
+          });
+          // 更新 localStorage
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTimers));
+          return updatedTimers;
+        });
+      }, 1000);
+
+      return () => clearInterval(interval);
+    }
+  }, [timers]);
+
+  const handleAddTimer = () => {
+    if (inputName.trim() !== '') {
+      const totalSeconds = (hours * 3600) + (minutes * 60);
+      const newTimer: Timer = {
+        id: Date.now(),
+        name: inputName.trim().slice(0, 20),
+        timeLeft: totalSeconds,
+        initialTime: totalSeconds,
+      };
+      setTimers(prevTimers => [...prevTimers, newTimer]);
+      setInputName('');
+      setHours(DEFAULT_HOURS);
+      setMinutes(DEFAULT_MINUTES);
+    }
+  };
+
+  const handleRemoveTimer = (id: number) => {
+    setTimers(prevTimers => prevTimers.filter(timer => timer.id !== id));
+  };
+
+  const handleResetTimer = (id: number) => {
+    setTimers(prevTimers =>
+      prevTimers.map(timer =>
+        timer.id === id
+          ? { ...timer, timeLeft: timer.initialTime }
+          : timer
+      )
+    );
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setInputName(value.slice(0, 20));
+  };
+
+  const handleClearAll = () => {
+    if (timers.length > 0) {
+      setTimers([]);
+    }
+  };
+
+  const formatTime = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+
+    return [
+      String(hours).padStart(2, '0'),
+      String(minutes).padStart(2, '0'),
+      String(secs).padStart(2, '0'),
+    ].join(':');
+  };
+
+  return (
+    <main className="flex min-h-screen flex-col items-center p-4 sm:p-8 bg-gray-900 text-white">
+      <h1 className="text-3xl sm:text-5xl font-[700] mb-6 sm:mb-8 text-center" style={{ color: 'rgb(135, 154, 57)' }}>
+        Multi-Countdown Timer
+      </h1>
+      
+      <div className="flex flex-col items-center gap-4 mb-6 sm:mb-8 w-full max-w-xl">
+        <div className="flex flex-col sm:flex-row gap-4 items-center w-full">
+          <input
+            type="text"
+            placeholder="Enter a name"
+            value={inputName}
+            onChange={handleInputChange}
+            maxLength={20}
+            className="px-4 py-2 text-base sm:text-lg font-[400] rounded-md bg-gray-800 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-[rgb(135,154,57)] w-full sm:w-60"
+          />
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-center">
+            <input
+              type="number"
+              min="0"
+              max="23"
+              value={hours}
+              onChange={(e) => setHours(Math.max(0, Math.min(23, parseInt(e.target.value) || 0)))}
+              className="px-3 py-2 text-base sm:text-lg font-[400] rounded-md bg-gray-800 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-[rgb(135,154,57)] w-20"
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+            <span className="text-base sm:text-lg font-[300]">h</span>
+            <input
+              type="number"
+              min="0"
+              max="59"
+              value={minutes}
+              onChange={(e) => setMinutes(Math.max(0, Math.min(59, parseInt(e.target.value) || 0)))}
+              className="px-3 py-2 text-base sm:text-lg font-[400] rounded-md bg-gray-800 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-[rgb(135,154,57)] w-20"
+            />
+            <span className="text-base sm:text-lg font-[300]">m</span>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+        <div className="flex gap-2 w-full">
+          <button 
+            onClick={handleAddTimer}
+            className="px-6 py-2 text-base sm:text-lg font-[600] rounded-md transition-colors flex-1 hover:brightness-90"
+            style={{ 
+              backgroundColor: 'rgb(135, 154, 57)'
+            }}
+          >
+            Add Timer
+          </button>
+          {/* {timers.length > 0 && (
+            <button 
+              onClick={handleClearAll}
+              className="px-4 py-2 text-base sm:text-lg font-[600] rounded-md transition-colors hover:bg-red-700 bg-red-600"
+            >
+              Clear All
+            </button>
+          )} */}
+        </div>
+      </div>
+
+      <div className="w-full max-w-5xl flex flex-col gap-4">
+        {timers.map(timer => (
+          <div key={timer.id} className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between bg-gray-800 p-4 rounded-lg shadow-lg gap-4 sm:gap-6">
+            <h2 className="text-xl sm:text-2xl font-[600] capitalize" style={{ color: 'rgb(135, 154, 57)' }}>{timer.name}</h2>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 w-full sm:w-auto">
+              <div className="text-3xl sm:text-4xl font-[500] tracking-wider">
+                {formatTime(timer.timeLeft)}
+              </div>
+              {timer.timeLeft === 0 && (
+                <p className="text-base sm:text-lg font-[500] whitespace-nowrap" style={{ color: 'rgb(135, 154, 57)' }}>
+                  Time's up!
+                </p>
+              )}
+              <div className="flex gap-2 w-full sm:w-auto">
+                <button
+                  onClick={() => handleResetTimer(timer.id)}
+                  className="px-4 py-2 text-sm sm:text-base font-[500] rounded-md transition-colors flex-1 sm:flex-initial"
+                  style={{ 
+                    backgroundColor: 'rgba(135, 154, 57, 0.2)',
+                    color: 'rgb(135, 154, 57)',
+                    border: '1px solid rgb(135, 154, 57)'
+                  }}
+                >
+                  Reset
+                </button>
+                <button
+                  onClick={() => handleRemoveTimer(timer.id)}
+                  className="px-4 py-2 text-sm sm:text-base font-[500] rounded-md bg-red-600 hover:bg-red-700 transition-colors flex-1 sm:flex-initial"
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      {timers.length === 0 && (
+        <p className="text-gray-400 font-[300] text-center">No active timers. Add one to get started!</p>
+      )}
+    </main>
   );
 }
+
