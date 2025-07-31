@@ -8,7 +8,8 @@ interface Timer {
   name: string;
   timeLeft: number;
   initialTime: number;
-  startTime: number;
+  startTime: number;      // timestamp when timer started
+  pauseTime?: number;     // timestamp when timer was last saved (for background running)
 }
 
 interface Toast {
@@ -38,17 +39,45 @@ export default function Home() {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [sortMode, setSortMode] = useState<SortMode>('startTime');
 
-  // Load timers from localStorage
+  // Load and sync timers from localStorage with background time calculation
   useEffect(() => {
     try {
       const savedTimers = localStorage.getItem(STORAGE_KEY);
       if (savedTimers) {
-        setTimers(JSON.parse(savedTimers));
+        const parsedTimers: Timer[] = JSON.parse(savedTimers);
+        
+        // Calculate elapsed time for each timer
+        const updatedTimers = parsedTimers.map(timer => {
+          if (timer.timeLeft <= 0) return timer;
+          
+          const now = Date.now();
+          const elapsedSeconds = timer.pauseTime 
+            ? Math.floor((now - timer.pauseTime) / 1000)
+            : 0;
+          
+          const newTimeLeft = Math.max(0, timer.timeLeft - elapsedSeconds);
+          
+          if (timer.timeLeft > 0 && newTimeLeft === 0) {
+            playDingSound();
+          }
+          
+          return {
+            ...timer,
+            timeLeft: newTimeLeft,
+            pauseTime: now
+          };
+        });
+
+        setTimers(updatedTimers);
+        // Only update localStorage if we actually changed something
+        if (JSON.stringify(updatedTimers) !== savedTimers) {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTimers));
+        }
       }
     } catch (error) {
       console.error("Failed to parse timers from localStorage", error);
     }
-  }, []);
+  }, []); // This effect runs only once when component mounts
 
   // Listen for storage events from other windows
   useEffect(() => {
@@ -63,13 +92,8 @@ export default function Home() {
       }
     };
 
-    // Add event listener
     window.addEventListener('storage', handleStorageChange);
-
-    // Cleanup
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   // Timer countdown logic
@@ -78,16 +102,20 @@ export default function Home() {
     if (!hasActiveTimers) return;
 
     const interval = setInterval(() => {
+      const now = Date.now();
       setTimers(prevTimers => {
         const updatedTimers = prevTimers.map(timer => {
           if (timer.timeLeft <= 0) return timer;
           if (timer.timeLeft === 1) {
             playDingSound();
           }
-          return { ...timer, timeLeft: timer.timeLeft - 1 };
+          return {
+            ...timer,
+            timeLeft: timer.timeLeft - 1,
+            pauseTime: now
+          };
         });
 
-        // Save to localStorage after each update
         localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTimers));
         return updatedTimers;
       });
@@ -98,7 +126,16 @@ export default function Home() {
 
   // Save timers to localStorage whenever they change
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(timers));
+    if (timers.length > 0) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(timers));
+    } else {
+      // Don't remove from localStorage if there are no timers
+      const savedTimers = localStorage.getItem(STORAGE_KEY);
+      if (savedTimers && JSON.parse(savedTimers).length > 0) {
+        return; // Keep existing timers in localStorage
+      }
+      localStorage.removeItem(STORAGE_KEY);
+    }
   }, [timers]);
 
   const showToast = (message: string) => {
@@ -120,12 +157,14 @@ export default function Home() {
     }
 
     const totalSeconds = (hours * 3600) + (minutes * 60);
+    const now = Date.now();
     const newTimer: Timer = {
-      id: Date.now(),
+      id: now,
       name: trimmedName,
       timeLeft: totalSeconds,
       initialTime: totalSeconds > 0 ? totalSeconds : 1,
-      startTime: Date.now(),
+      startTime: now,
+      pauseTime: now
     };
     setTimers(prevTimers => [...prevTimers, newTimer]);
     setInputName('');
@@ -138,10 +177,11 @@ export default function Home() {
   };
 
   const handleResetTimer = (id: number) => {
+    const now = Date.now();
     setTimers(prevTimers =>
       prevTimers.map(timer =>
         timer.id === id
-          ? { ...timer, timeLeft: timer.initialTime, startTime: Date.now() }
+          ? { ...timer, timeLeft: timer.initialTime, startTime: now, pauseTime: now }
           : timer
       )
     );
@@ -208,7 +248,7 @@ export default function Home() {
           textShadow: `2px 2px 4px ${SLIME_COLOR.secondary}`,
         }}
       >
-        Slime Timer
+        SlimeLand Timer
         <span className="absolute -top-2 -right-2 w-4 h-4 rounded-full"
           style={{ backgroundColor: SLIME_COLOR.secondary }}
         />
