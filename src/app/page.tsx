@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { playDingSound, unlockAudio } from './sounds';
 
 interface Timer {
   id: number;
   name: string;
   timeLeft: number;
   initialTime: number;
-  startTime: number; // Unix timestamp in milliseconds
+  startTime: number;
 }
 
 interface Toast {
@@ -18,12 +19,13 @@ interface Toast {
 const DEFAULT_HOURS = 2;
 const DEFAULT_MINUTES = 0;
 const STORAGE_KEY = 'countdown-timers';
+
 const SLIME_COLOR = {
-  primary: 'rgb(142, 207, 201)',     // 柔和的青绿色
-  secondary: 'rgb(190, 229, 225)',   // 更浅的青绿色
-  background: 'rgb(231, 245, 243)',  // 最浅的背景色
-  text: 'rgb(73, 116, 112)',         // 深青绿色文字
-  dark: 'rgb(45, 87, 83)',          // 更深的青绿色
+  primary: 'rgb(142, 207, 201)',
+  secondary: 'rgb(190, 229, 225)',
+  background: 'rgb(231, 245, 243)',
+  text: 'rgb(73, 116, 112)',
+  dark: 'rgb(45, 87, 83)',
 };
 
 export default function Home() {
@@ -33,96 +35,85 @@ export default function Home() {
   const [minutes, setMinutes] = useState(DEFAULT_MINUTES);
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  // 从 localStorage 加载数据
   useEffect(() => {
-    const savedTimers = localStorage.getItem(STORAGE_KEY);
-    if (savedTimers) {
-      setTimers(JSON.parse(savedTimers));
+    try {
+      const savedTimers = localStorage.getItem(STORAGE_KEY);
+      if (savedTimers) {
+        setTimers(JSON.parse(savedTimers));
+      }
+    } catch (error) {
+      console.error("Failed to parse timers from localStorage", error);
     }
   }, []);
 
-  // 保存数据到 localStorage
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(timers));
-  }, [timers]);
-
-  // 计时器逻辑
-  useEffect(() => {
-    if (timers.some(timer => timer.timeLeft > 0)) {
-      const interval = setInterval(() => {
-        setTimers(prevTimers => {
-          const updatedTimers = prevTimers.map(timer => {
-            if (timer.timeLeft > 0) {
-              return { ...timer, timeLeft: timer.timeLeft - 1 };
-            }
-            return timer;
-          });
-          // 更新 localStorage
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTimers));
-          return updatedTimers;
-        });
-      }, 1000);
-
-      return () => clearInterval(interval);
+    if (timers.length > 0) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(timers));
+    } else {
+      localStorage.removeItem(STORAGE_KEY);
     }
   }, [timers]);
 
+  useEffect(() => {
+    const hasActiveTimers = timers.some(timer => timer.timeLeft > 0);
+    if (!hasActiveTimers) return;
+
+    const interval = setInterval(() => {
+      setTimers(prevTimers =>
+        prevTimers.map(timer => {
+          if (timer.timeLeft <= 0) return timer;
+          if (timer.timeLeft === 1) {
+            playDingSound();
+          }
+          return { ...timer, timeLeft: timer.timeLeft - 1 };
+        })
+      );
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [timers]);
+
   const showToast = (message: string) => {
-    const newToast = {
-      id: Date.now(),
-      message,
-    };
+    const newToast = { id: Date.now(), message };
     setToasts(prev => [...prev, newToast]);
-    
-    // Remove the toast after 3 seconds
     setTimeout(() => {
       setToasts(prev => prev.filter(toast => toast.id !== newToast.id));
     }, 3000);
   };
-
-  const formatTime = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-
-    return [
-      String(hours).padStart(2, '0'),
-      String(minutes).padStart(2, '0'),
-      String(secs).padStart(2, '0'),
-    ].join(':');
-  };
-
-  const formatStartTime = (timestamp: number) => {
-    const date = new Date(timestamp);
-    const hours = date.getHours().toString().padStart(2, '0');
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    return `${hours}:${minutes}`;
+  
+  const handleUserInteraction = () => {
+    unlockAudio();
   };
 
   const handleAddTimer = () => {
+    handleUserInteraction();
     const trimmedName = inputName.trim().slice(0, 20);
-    if (trimmedName !== '') {
-      // 检查名称是否已存在
-      const nameExists = timers.some(timer => timer.name.toLowerCase() === trimmedName.toLowerCase());
-      if (nameExists) {
-        showToast(`"${trimmedName}" already exists!`);
-        return; // 如果名称已存在，直接返回
-      }
+    if (trimmedName === '') return;
 
-      const totalSeconds = (hours * 3600) + (minutes * 60);
-      const newTimer: Timer = {
-        id: Date.now(),
-        name: trimmedName,
-        timeLeft: totalSeconds,
-        initialTime: totalSeconds,
-        startTime: Date.now(),
-      };
-      setTimers(prevTimers => [...prevTimers, newTimer]);
-      setInputName('');
-      setHours(DEFAULT_HOURS);
-      setMinutes(DEFAULT_MINUTES);
+    const nameExists = timers.some(timer => timer.name.toLowerCase() === trimmedName.toLowerCase());
+    if (nameExists) {
+      showToast(`"${trimmedName}" already exists!`);
+      return;
     }
+
+    const totalSeconds = (hours * 3600) + (minutes * 60);
+    const newTimer: Timer = {
+      id: Date.now(),
+      name: trimmedName,
+      timeLeft: totalSeconds,
+      initialTime: totalSeconds > 0 ? totalSeconds : 1,
+      startTime: Date.now(),
+    };
+    setTimers(prevTimers => [...prevTimers, newTimer]);
+    setInputName('');
+    setHours(DEFAULT_HOURS);
+    setMinutes(DEFAULT_MINUTES);
   };
+  
+  const handleTestSound = () => {
+    handleUserInteraction();
+    playDingSound();
+  }
 
   const handleRemoveTimer = (id: number) => {
     setTimers(prevTimers => prevTimers.filter(timer => timer.id !== id));
@@ -137,21 +128,31 @@ export default function Home() {
       )
     );
   };
-
+  
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setInputName(value.slice(0, 20));
+    setInputName(e.target.value);
   };
 
-  const handleClearAll = () => {
-    if (timers.length > 0) {
-      setTimers([]);
-    }
+  const formatTime = (seconds: number) => {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    return [
+      String(h).padStart(2, '0'),
+      String(m).padStart(2, '0'),
+      String(s).padStart(2, '0'),
+    ].join(':');
+  };
+  
+  const formatStartTime = (timestamp: number) => {
+    const date = new Date(timestamp);
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
   };
 
   return (
     <main className="flex min-h-screen flex-col items-center p-4 sm:p-8 bg-gradient-to-b from-[#E7F5F3] to-[#FFFFFF]">
-      {/* Toast Container */}
       <div className="fixed top-4 right-4 z-50 flex flex-col gap-2">
         {toasts.map(toast => (
           <div
@@ -175,7 +176,7 @@ export default function Home() {
           textShadow: `2px 2px 4px ${SLIME_COLOR.secondary}`,
         }}
       >
-        SlimeLand Timer
+        Slime Timer
         <span className="absolute -top-2 -right-2 w-4 h-4 rounded-full"
           style={{ backgroundColor: SLIME_COLOR.secondary }}
         />
@@ -201,7 +202,7 @@ export default function Home() {
               min="0"
               max="23"
               value={hours}
-              onChange={(e) => setHours(Math.max(0, Math.min(23, parseInt(e.target.value) || 0)))}
+              onChange={(e) => setHours(Math.max(0, Math.min(23, parseInt(e.target.value, 10) || 0)))}
               className="px-3 py-2 text-base sm:text-lg font-[400] rounded-full bg-white/70 border-2 focus:outline-none focus:ring-2 transition-all duration-300 w-20 text-center"
               style={{ 
                 borderColor: SLIME_COLOR.primary,
@@ -214,7 +215,7 @@ export default function Home() {
               min="0"
               max="59"
               value={minutes}
-              onChange={(e) => setMinutes(Math.max(0, Math.min(59, parseInt(e.target.value) || 0)))}
+              onChange={(e) => setMinutes(Math.max(0, Math.min(59, parseInt(e.target.value, 10) || 0)))}
               className="px-3 py-2 text-base sm:text-lg font-[400] rounded-full bg-white/70 border-2 focus:outline-none focus:ring-2 transition-all duration-300 w-20 text-center"
               style={{ 
                 borderColor: SLIME_COLOR.primary,
@@ -224,17 +225,30 @@ export default function Home() {
             <span className="text-base sm:text-lg font-[300]" style={{ color: SLIME_COLOR.text }}>m</span>
           </div>
         </div>
-        <button 
-          onClick={handleAddTimer}
-          className="px-6 py-2 text-base sm:text-lg font-[600] rounded-full transition-all duration-300 w-full hover:scale-[1.02] hover:shadow-lg active:scale-95 relative overflow-hidden"
-          style={{ 
-            backgroundColor: SLIME_COLOR.primary,
-            color: 'white',
-          }}
-        >
-          Add Timer
-          <div className="absolute top-0 left-0 w-full h-1 bg-white/20 rounded-full" />
-        </button>
+        <div className="flex gap-2 w-full">
+          <button 
+            onClick={handleAddTimer}
+            className="px-6 py-2 text-base sm:text-lg font-[600] rounded-full transition-all duration-300 flex-1 hover:scale-[1.02] hover:shadow-lg active:scale-95 relative overflow-hidden"
+            style={{ 
+              backgroundColor: SLIME_COLOR.primary,
+              color: 'white',
+            }}
+          >
+            Add Timer
+            <div className="absolute top-0 left-0 w-full h-1 bg-white/20 rounded-full" />
+          </button>
+          <button 
+            onClick={handleTestSound}
+            className="px-4 py-2 text-base sm:text-lg font-[600] rounded-full transition-all duration-300 hover:scale-[1.02] hover:shadow-lg active:scale-95 relative overflow-hidden"
+            style={{ 
+              backgroundColor: SLIME_COLOR.secondary,
+              color: SLIME_COLOR.text,
+            }}
+          >
+            🔔
+            <div className="absolute top-0 left-0 w-full h-1 bg-white/20 rounded-full" />
+          </button>
+        </div>
       </div>
 
       <div className="w-full max-w-5xl flex flex-col gap-4">
@@ -248,13 +262,14 @@ export default function Home() {
             }}
           >
             <div 
-              className="absolute top-0 left-0 h-1 transition-all duration-300"
+              className="absolute top-0 left-0 h-full transition-all duration-300"
               style={{ 
-                width: `${(timer.timeLeft / timer.initialTime) * 100}%`,
+                width: `${(timer.timeLeft / (timer.initialTime || 1)) * 100}%`,
                 backgroundColor: SLIME_COLOR.primary,
+                opacity: 0.1,
               }}
             />
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 relative">
               <h2 className="text-xl sm:text-2xl font-[600] capitalize" style={{ color: SLIME_COLOR.text }}>
                 {timer.name}
               </h2>
@@ -267,7 +282,7 @@ export default function Home() {
                 </div>
               )}
             </div>
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 w-full sm:w-auto">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 w-full sm:w-auto relative">
               <div className="text-3xl sm:text-4xl font-[500] tracking-wider" style={{ color: SLIME_COLOR.dark }}>
                 {formatTime(timer.timeLeft)}
               </div>
