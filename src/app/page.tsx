@@ -38,6 +38,7 @@ export default function Home() {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [sortMode, setSortMode] = useState<SortMode>('startTime');
 
+  // Load timers from localStorage
   useEffect(() => {
     try {
       const savedTimers = localStorage.getItem(STORAGE_KEY);
@@ -49,31 +50,55 @@ export default function Home() {
     }
   }, []);
 
+  // Listen for storage events from other windows
   useEffect(() => {
-    if (timers.length > 0) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(timers));
-    } else {
-      localStorage.removeItem(STORAGE_KEY);
-    }
-  }, [timers]);
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === STORAGE_KEY && event.newValue !== null) {
+        try {
+          const newTimers = JSON.parse(event.newValue);
+          setTimers(newTimers);
+        } catch (error) {
+          console.error("Failed to parse timers from storage event", error);
+        }
+      }
+    };
 
+    // Add event listener
+    window.addEventListener('storage', handleStorageChange);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+
+  // Timer countdown logic
   useEffect(() => {
     const hasActiveTimers = timers.some(timer => timer.timeLeft > 0);
     if (!hasActiveTimers) return;
 
     const interval = setInterval(() => {
-      setTimers(prevTimers =>
-        prevTimers.map(timer => {
+      setTimers(prevTimers => {
+        const updatedTimers = prevTimers.map(timer => {
           if (timer.timeLeft <= 0) return timer;
           if (timer.timeLeft === 1) {
             playDingSound();
           }
           return { ...timer, timeLeft: timer.timeLeft - 1 };
-        })
-      );
+        });
+
+        // Save to localStorage after each update
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTimers));
+        return updatedTimers;
+      });
     }, 1000);
 
     return () => clearInterval(interval);
+  }, [timers]);
+
+  // Save timers to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(timers));
   }, [timers]);
 
   const showToast = (message: string) => {
