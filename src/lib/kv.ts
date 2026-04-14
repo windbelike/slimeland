@@ -8,19 +8,10 @@ interface Timer {
   expiresAt: number;
 }
 
+let _kv: KVNamespace | null = null;
 const memoryStore = new Map<string, string>();
 
-function getKV() {
-  try {
-    const { env } = getRequestContext();
-    if (env.KV) {
-      return env.KV as KVNamespace;
-    }
-  } catch {
-    // no-op: running outside Workers context (e.g. next dev)
-  }
-
-  // Fallback in-memory store for local development
+function getInMemoryKV(): KVNamespace {
   return {
     get: async (key: string) => memoryStore.get(key) || null,
     put: async (key: string, value: string) => {
@@ -33,6 +24,23 @@ function getKV() {
       return { keys, list_complete: true, cursor: '' };
     },
   } as unknown as KVNamespace;
+}
+
+function getKV(): KVNamespace {
+  if (_kv) return _kv;
+
+  try {
+    const { env } = getRequestContext();
+    if (env && env.KV) {
+      _kv = env.KV as KVNamespace;
+      return _kv;
+    }
+  } catch (e) {
+    console.warn('KV binding not available, using in-memory fallback:', e);
+  }
+
+  _kv = getInMemoryKV();
+  return _kv;
 }
 
 export async function getTimers(dayKey: string): Promise<Timer[]> {

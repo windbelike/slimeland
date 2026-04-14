@@ -8,7 +8,8 @@ export async function GET() {
     const days = await getHistoryDays();
     return NextResponse.json({ days });
   } catch (error) {
-    console.error('KV history error:', error);
-    return NextResponse.json({ days: [] }, { status: 500 });
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error('KV history error:', msg);
+    return NextResponse.json({ days: [], error: msg }, { status: 500 });
   }
 }

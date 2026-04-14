@@ -18,8 +18,9 @@ export async function GET(request: Request) {
     const timers = await getTimers(dayKey);
     return NextResponse.json({ timers, dayKey });
   } catch (error) {
-    console.error('KV GET error:', error);
-    return NextResponse.json({ timers: [], dayKey: 'today' }, { status: 500 });
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error('KV GET error:', msg);
+    return NextResponse.json({ timers: [], dayKey: 'today', error: msg }, { status: 500 });
   }
 }
 
@@ -34,8 +35,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, timers });
   } catch (error) {
-    console.error('KV POST error:', error);
-    return NextResponse.json({ success: false }, { status: 500 });
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error('KV POST error:', msg);
+    return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }
 
@@ -51,8 +53,9 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({ success: true, timers });
   } catch (error) {
-    console.error('KV DELETE error:', error);
-    return NextResponse.json({ success: false }, { status: 500 });
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error('KV DELETE error:', msg);
+    return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }
 
@@ -71,7 +74,8 @@ export async function PATCH(request: Request) {
 
     return NextResponse.json({ success: true, timers });
   } catch (error) {
-    console.error('KV PATCH error:', error);
-    return NextResponse.json({ success: false }, { status: 500 });
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error('KV PATCH error:', msg);
+    return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }
