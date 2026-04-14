@@ -71,7 +71,6 @@ export default function Home() {
     }, 3000);
   }, []);
 
-  // 加载当前日期计时器
   const loadTimers = useCallback(async (day: string) => {
     try {
       setIsLoading(true);
@@ -95,7 +94,6 @@ export default function Home() {
     }
   }, [showToast]);
 
-  // 加载历史记录
   const loadHistory = useCallback(async () => {
     try {
       const res = await fetch('/api/timers/history');
@@ -106,13 +104,11 @@ export default function Home() {
     }
   }, []);
 
-  // 首次加载
   useEffect(() => {
     loadTimers(getDayKey());
     loadHistory();
   }, [loadTimers, loadHistory]);
 
-  // 全局 tick：有活跃计时器时每秒刷新 UI
   useEffect(() => {
     const hasActive = timers.some(t => timeLeftOf(t) > 0);
     if (!hasActive) return;
@@ -124,7 +120,6 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [timers]);
 
-  // 轮询：每 8 秒同步一次（多设备同步）
   useEffect(() => {
     const interval = setInterval(() => {
       loadTimers(currentDay);
@@ -199,7 +194,6 @@ export default function Home() {
     setShowDayMenu(false);
   };
 
-  // 点击外部关闭日期菜单
   useEffect(() => {
     if (!showDayMenu) return;
     const handleClick = (e: MouseEvent) => {
@@ -238,16 +232,16 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-[#FFF5F7] text-rose-900 px-4 py-8 sm:px-8 sm:py-12">
+    <main className="min-h-screen bg-[#FDF2F4] text-slate-900 px-4 py-8 sm:px-8 sm:py-12">
       {/* Toasts */}
       <div className="fixed top-4 right-4 z-50 flex flex-col gap-3">
         {toasts.map(toast => (
           <div
             key={toast.id}
-            className="animate-slideIn flex items-center gap-3 rounded-xl bg-white/90 backdrop-blur-md border border-pink-200/70 px-4 py-3 shadow-lg"
+            className="animate-slideIn flex items-center gap-3 rounded-xl bg-white px-4 py-3 shadow-lg border border-slate-100"
           >
             <span className="inline-flex h-2 w-2 rounded-full bg-pink-500" />
-            <span className="text-sm font-medium text-rose-800">{toast.message}</span>
+            <span className="text-sm font-medium text-slate-800">{toast.message}</span>
           </div>
         ))}
       </div>
@@ -255,11 +249,11 @@ export default function Home() {
       <div className="mx-auto max-w-4xl">
         {/* 标题 */}
         <div className="mb-10 text-center">
-          <h1 className="text-4xl sm:text-5xl font-semibold tracking-tight bg-gradient-to-r from-pink-500 to-rose-500 bg-clip-text text-transparent">
+          <h1 className="text-4xl sm:text-5xl font-semibold tracking-tight text-slate-900">
             SlimeLand 计时器
           </h1>
-          <p className="mt-2 text-rose-400 text-sm sm:text-base font-light">
-            选择编号，设定时间，开始倒计时。
+          <p className="mt-2 text-slate-500 text-sm sm:text-base font-light">
+            选择编号，设定时间，开始倒计时
           </p>
         </div>
 
@@ -267,10 +261,10 @@ export default function Home() {
         <div className="mb-6" data-day-menu>
           <button
             onClick={() => setShowDayMenu(v => !v)}
-            className="w-full flex items-center justify-between rounded-2xl border border-pink-200 bg-white/70 backdrop-blur-sm px-5 py-4 shadow-sm transition-all hover:bg-white"
+            className="w-full flex items-center justify-between rounded-2xl bg-white px-5 py-4 shadow-sm transition-all hover:shadow-md border border-slate-100"
           >
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-pink-100 text-pink-500">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-pink-50 text-pink-500">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
                   <line x1="16" y1="2" x2="16" y2="6" />
@@ -279,17 +273,17 @@ export default function Home() {
                 </svg>
               </div>
               <div className="text-left">
-                <div className="text-sm font-semibold text-rose-700">
+                <div className="text-sm font-semibold text-slate-900">
                   {formatDayLabel(currentDay)}
                 </div>
-                <div className="text-xs text-rose-400">
+                <div className="text-xs text-slate-400">
                   每天凌晨 6 点开启新的一天
                 </div>
               </div>
             </div>
             <div className="flex items-center gap-2">
               {historyDays.length > 0 && (
-                <span className="text-xs font-medium text-pink-500 bg-pink-50 px-2 py-1 rounded-lg">
+                <span className="text-xs font-medium text-pink-600 bg-pink-50 px-2.5 py-1 rounded-full">
                   {historyDays.length + 1} 天记录
                 </span>
               )}
@@ -302,7 +296,7 @@ export default function Home() {
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className={['text-pink-400 transition-transform duration-200', showDayMenu ? 'rotate-180' : ''].join(' ')}
+                className={['text-slate-400 transition-transform duration-200', showDayMenu ? 'rotate-180' : ''].join(' ')}
               >
                 <polyline points="6 9 12 15 18 9" />
               </svg>
@@ -310,13 +304,13 @@ export default function Home() {
           </button>
 
           {showDayMenu && (
-            <div className="mt-2 rounded-2xl border border-pink-200 bg-white/95 backdrop-blur-sm shadow-lg overflow-hidden">
+            <div className="mt-2 rounded-2xl bg-white shadow-lg border border-slate-100 overflow-hidden">
               <div className="max-h-64 overflow-y-auto py-1">
                 <button
                   onClick={() => handleSwitchDay(getDayKey())}
                   className={[
                     'w-full text-left px-5 py-3 text-sm font-medium transition-colors',
-                    currentDay === getDayKey() ? 'bg-pink-50 text-pink-600' : 'text-rose-700 hover:bg-pink-50/50',
+                    currentDay === getDayKey() ? 'bg-pink-50 text-pink-600' : 'text-slate-700 hover:bg-slate-50',
                   ].join(' ')}
                 >
                   <div className="flex items-center justify-between">
@@ -334,7 +328,7 @@ export default function Home() {
                     onClick={() => handleSwitchDay(day)}
                     className={[
                       'w-full text-left px-5 py-3 text-sm font-medium transition-colors',
-                      currentDay === day ? 'bg-pink-50 text-pink-600' : 'text-rose-700 hover:bg-pink-50/50',
+                      currentDay === day ? 'bg-pink-50 text-pink-600' : 'text-slate-700 hover:bg-slate-50',
                     ].join(' ')}
                   >
                     <div className="flex items-center justify-between">
@@ -351,12 +345,12 @@ export default function Home() {
         </div>
 
         {/* 编号选择器 */}
-        <div className="mb-8 rounded-2xl border border-pink-200 bg-white/60 backdrop-blur-sm p-5 sm:p-6 shadow-sm">
+        <div className="mb-8 rounded-2xl bg-white p-5 sm:p-6 shadow-sm border border-slate-100">
           <div className="mb-4 flex items-center justify-between">
-            <span className="text-sm font-semibold text-rose-600">选择编号</span>
+            <span className="text-sm font-semibold text-slate-900">选择编号</span>
             {selectedNumber && (
-              <span className="text-xs font-semibold text-pink-500 bg-pink-100 px-3 py-1 rounded-full">
-                已选：{selectedNumber}
+              <span className="text-xs font-semibold text-pink-600 bg-pink-50 px-3 py-1 rounded-full">
+                已选 {selectedNumber}
               </span>
             )}
           </div>
@@ -372,15 +366,15 @@ export default function Home() {
                   className={[
                     'relative h-12 sm:h-14 rounded-xl text-sm sm:text-base font-medium transition-all duration-200',
                     isSelected
-                      ? 'bg-pink-500 text-white shadow-lg shadow-pink-300/40'
+                      ? 'bg-pink-500 text-white shadow-md shadow-pink-200'
                       : isActive
-                      ? 'bg-pink-100/60 text-pink-300 cursor-not-allowed'
-                      : 'bg-white text-rose-600 hover:bg-pink-50 hover:text-pink-600 border border-pink-200 shadow-sm',
+                      ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                      : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200',
                   ].join(' ')}
                 >
                   {num}
                   {isActive && (
-                    <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-pink-300" />
+                    <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-slate-300" />
                   )}
                 </button>
               );
@@ -390,7 +384,7 @@ export default function Home() {
 
         {/* 时间输入 & 添加 */}
         <div className="mb-10 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
-          <div className="flex items-center justify-center gap-3 rounded-2xl border border-pink-200 bg-white/60 backdrop-blur-sm px-5 py-4 shadow-sm">
+          <div className="flex items-center justify-center gap-3 rounded-2xl bg-white px-5 py-4 shadow-sm border border-slate-100">
             <div className="flex items-center gap-2">
               <input
                 type="number"
@@ -398,11 +392,11 @@ export default function Home() {
                 max={23}
                 value={hours}
                 onChange={e => setHours(Math.max(0, Math.min(23, parseInt(e.target.value, 10) || 0)))}
-                className="h-12 w-20 rounded-xl bg-pink-50 text-center text-2xl font-medium text-rose-700 outline-none ring-0 border border-pink-200 focus:border-pink-400 transition-colors"
+                className="h-12 w-20 rounded-xl bg-slate-50 text-center text-2xl font-semibold text-slate-900 outline-none ring-0 border border-slate-200 focus:border-pink-400 transition-colors"
               />
-              <span className="text-rose-400 text-sm font-medium">时</span>
+              <span className="text-slate-500 text-sm font-medium">时</span>
             </div>
-            <span className="text-pink-300 text-xl">:</span>
+            <span className="text-slate-300 text-xl">:</span>
             <div className="flex items-center gap-2">
               <input
                 type="number"
@@ -410,16 +404,16 @@ export default function Home() {
                 max={59}
                 value={minutes}
                 onChange={e => setMinutes(Math.max(0, Math.min(59, parseInt(e.target.value, 10) || 0)))}
-                className="h-12 w-20 rounded-xl bg-pink-50 text-center text-2xl font-medium text-rose-700 outline-none ring-0 border border-pink-200 focus:border-pink-400 transition-colors"
+                className="h-12 w-20 rounded-xl bg-slate-50 text-center text-2xl font-semibold text-slate-900 outline-none ring-0 border border-slate-200 focus:border-pink-400 transition-colors"
               />
-              <span className="text-rose-400 text-sm font-medium">分</span>
+              <span className="text-slate-500 text-sm font-medium">分</span>
             </div>
           </div>
 
           <button
             onClick={handleAddTimer}
             disabled={isLoading}
-            className="w-full h-16 sm:h-[58px] rounded-xl bg-pink-500 text-white font-semibold text-lg transition-all duration-200 hover:bg-pink-400 hover:shadow-lg hover:shadow-pink-300/40 active:scale-[0.98] disabled:opacity-60"
+            className="w-full h-16 sm:h-[58px] rounded-xl bg-pink-500 text-white font-semibold text-lg transition-all duration-200 hover:bg-pink-600 hover:shadow-lg hover:shadow-pink-200 active:scale-[0.98] disabled:opacity-60"
           >
             {isLoading ? '加载中...' : '添加计时器'}
           </button>
@@ -434,30 +428,30 @@ export default function Home() {
             return (
               <div
                 key={timer.id}
-                className="group relative overflow-hidden rounded-2xl border border-pink-200 bg-white/70 backdrop-blur-sm transition-all duration-300 hover:border-pink-300 hover:bg-white shadow-sm"
+                className="group relative overflow-hidden rounded-2xl bg-white transition-all duration-300 hover:shadow-md border border-slate-100"
               >
                 {/* 进度条 */}
                 <div
-                  className="absolute bottom-0 left-0 h-2 transition-all duration-1000"
+                  className="absolute bottom-0 left-0 h-1.5 transition-all duration-1000"
                   style={{
                     width: `${pct}%`,
-                    backgroundColor: isDone ? '#f43f5e' : '#f472b6',
-                    opacity: 0.9,
+                    backgroundColor: isDone ? '#f43f5e' : '#ec4899',
+                    opacity: 0.85,
                   }}
                 />
 
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 sm:p-6">
                   <div className="flex items-center gap-4">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-pink-100 border border-pink-200 text-lg font-semibold text-rose-600">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-slate-100 text-lg font-bold text-slate-900">
                       {timer.number}
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs uppercase tracking-wider text-rose-400 font-semibold">
+                        <span className="text-xs font-medium text-slate-500">
                           {formatStartTime(timer.startTime)} 开始
                         </span>
-                        <span className="text-xs text-pink-300">•</span>
-                        <span className="text-xs text-rose-400">
+                        <span className="text-xs text-slate-300">•</span>
+                        <span className="text-xs text-slate-500">
                           共 {formatTime(timer.initialTime)}
                         </span>
                       </div>
@@ -471,7 +465,7 @@ export default function Home() {
                         <span
                           className={[
                             'text-sm font-medium',
-                            isDone ? 'text-rose-500' : 'text-pink-500',
+                            isDone ? 'text-rose-500' : 'text-slate-600',
                           ].join(' ')}
                         >
                           {isDone ? '时间到' : '进行中'}
@@ -483,20 +477,18 @@ export default function Home() {
                   <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-6 w-full sm:w-auto">
                     <div
                       className={[
-                        'text-3xl sm:text-4xl font-medium tracking-tight tabular-nums',
-                        isDone ? 'text-rose-500' : 'text-rose-700',
+                        'text-3xl sm:text-4xl font-semibold tracking-tight tabular-nums',
+                        isDone ? 'text-rose-500' : 'text-slate-900',
                       ].join(' ')}
                     >
                       {formatTime(tl)}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleRemoveTimer(timer.id, timer.number)}
-                        className="h-9 px-3 rounded-lg bg-rose-50 text-xs font-medium text-rose-500 transition-all duration-200 hover:bg-rose-100 active:scale-[0.98]"
-                      >
-                        移除
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => handleRemoveTimer(timer.id, timer.number)}
+                      className="h-9 px-4 rounded-lg bg-slate-50 text-sm font-medium text-slate-600 transition-all duration-200 hover:bg-slate-100 hover:text-slate-900 active:scale-[0.98]"
+                    >
+                      移除
+                    </button>
                   </div>
                 </div>
               </div>
@@ -506,8 +498,8 @@ export default function Home() {
 
         {/* 空状态 */}
         {timers.length === 0 && !isLoading && (
-          <div className="mt-10 rounded-2xl border border-dashed border-pink-300 bg-white/60 p-10 text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-pink-100 border border-pink-200">
+          <div className="mt-10 rounded-2xl border border-dashed border-slate-200 bg-white p-10 text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100">
               <svg
                 width="28"
                 height="28"
@@ -515,14 +507,14 @@ export default function Home() {
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="1.5"
-                className="text-pink-400"
+                className="text-slate-400"
               >
                 <circle cx="12" cy="12" r="10" />
                 <polyline points="12 6 12 12 16 14" />
               </svg>
             </div>
-            <p className="text-rose-600 font-medium">暂无计时器</p>
-            <p className="mt-1 text-sm text-rose-400">选择一个编号并添加计时器即可开始。</p>
+            <p className="text-slate-700 font-medium">暂无计时器</p>
+            <p className="mt-1 text-sm text-slate-400">选择一个编号并添加计时器即可开始</p>
           </div>
         )}
       </div>

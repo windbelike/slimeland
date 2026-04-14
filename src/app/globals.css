@@ -5,8 +5,8 @@
 @tailwind utilities;
 
 :root {
-  --background: #FFF5F7;
-  --foreground: #831843;
+  --background: #FDF2F4;
+  --foreground: #0f172a;
 }
 
 @theme inline {
@@ -40,8 +40,8 @@ input[type="number"] {
 
 /* 自定义选中文本颜色 */
 ::selection {
-  background: rgba(244, 114, 182, 0.2);
-  color: #831843;
+  background: rgba(236, 72, 153, 0.15);
+  color: #be185d;
 }
 
 @keyframes slideIn {
