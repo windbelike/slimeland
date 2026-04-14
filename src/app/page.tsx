@@ -61,6 +61,7 @@ export default function Home() {
   const [currentDay, setCurrentDay] = useState<string>(getDayKey());
   const [historyDays, setHistoryDays] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [showDayMenu, setShowDayMenu] = useState(false);
 
   const showToast = useCallback((message: string) => {
     const newToast = { id: Date.now(), message };
@@ -193,27 +194,23 @@ export default function Home() {
     }
   };
 
-  const handleResetTimer = async (id: number, number: string) => {
-    try {
-      const res = await fetch(`/api/timers?id=${id}&day=${currentDay}`, {
-        method: 'PATCH',
-      });
-      const data = (await res.json()) as { success: boolean; timers: Timer[] };
-      if (data.success) {
-        setTimers(data.timers);
-        showToast(`编号 ${number} 已重置`);
-      } else {
-        showToast('重置失败，请重试');
-      }
-    } catch (error) {
-      console.error('Reset timer error:', error);
-      showToast('重置失败，请重试');
-    }
-  };
-
   const handleSwitchDay = (day: string) => {
     loadTimers(day);
+    setShowDayMenu(false);
   };
+
+  // 点击外部关闭日期菜单
+  useEffect(() => {
+    if (!showDayMenu) return;
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('[data-day-menu]')) {
+        setShowDayMenu(false);
+      }
+    };
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, [showDayMenu]);
 
   const formatTime = (seconds: number) => {
     const h = Math.floor(seconds / 3600);
@@ -267,30 +264,89 @@ export default function Home() {
         </div>
 
         {/* 日期切换 */}
-        <div className="mb-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          <div className="flex-1 rounded-2xl border border-pink-200 bg-white/60 backdrop-blur-sm px-5 py-3 shadow-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold text-rose-600">
-                {formatDayLabel(currentDay)}
-              </span>
-              <span className="text-xs text-rose-400">
-                每天凌晨 6 点开启新的一天
-              </span>
+        <div className="mb-6" data-day-menu>
+          <button
+            onClick={() => setShowDayMenu(v => !v)}
+            className="w-full flex items-center justify-between rounded-2xl border border-pink-200 bg-white/70 backdrop-blur-sm px-5 py-4 shadow-sm transition-all hover:bg-white"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-pink-100 text-pink-500">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                  <line x1="16" y1="2" x2="16" y2="6" />
+                  <line x1="8" y1="2" x2="8" y2="6" />
+                  <line x1="3" y1="10" x2="21" y2="10" />
+                </svg>
+              </div>
+              <div className="text-left">
+                <div className="text-sm font-semibold text-rose-700">
+                  {formatDayLabel(currentDay)}
+                </div>
+                <div className="text-xs text-rose-400">
+                  每天凌晨 6 点开启新的一天
+                </div>
+              </div>
             </div>
-          </div>
-          {historyDays.length > 0 && (
-            <select
-              value={currentDay}
-              onChange={e => handleSwitchDay(e.target.value)}
-              className="h-12 px-4 rounded-2xl border border-pink-200 bg-white/60 text-rose-700 text-sm font-medium shadow-sm outline-none focus:border-pink-400"
-            >
-              <option value={getDayKey()}>今天</option>
-              {historyDays.map(day => (
-                <option key={day} value={day}>
-                  {formatDayLabel(day)}
-                </option>
-              ))}
-            </select>
+            <div className="flex items-center gap-2">
+              {historyDays.length > 0 && (
+                <span className="text-xs font-medium text-pink-500 bg-pink-50 px-2 py-1 rounded-lg">
+                  {historyDays.length + 1} 天记录
+                </span>
+              )}
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className={['text-pink-400 transition-transform duration-200', showDayMenu ? 'rotate-180' : ''].join(' ')}
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </div>
+          </button>
+
+          {showDayMenu && (
+            <div className="mt-2 rounded-2xl border border-pink-200 bg-white/95 backdrop-blur-sm shadow-lg overflow-hidden">
+              <div className="max-h-64 overflow-y-auto py-1">
+                <button
+                  onClick={() => handleSwitchDay(getDayKey())}
+                  className={[
+                    'w-full text-left px-5 py-3 text-sm font-medium transition-colors',
+                    currentDay === getDayKey() ? 'bg-pink-50 text-pink-600' : 'text-rose-700 hover:bg-pink-50/50',
+                  ].join(' ')}
+                >
+                  <div className="flex items-center justify-between">
+                    <span>今天</span>
+                    {currentDay === getDayKey() && (
+                      <span className="h-2 w-2 rounded-full bg-pink-500" />
+                    )}
+                  </div>
+                </button>
+                {historyDays
+                  .filter(day => day !== getDayKey())
+                  .map(day => (
+                  <button
+                    key={day}
+                    onClick={() => handleSwitchDay(day)}
+                    className={[
+                      'w-full text-left px-5 py-3 text-sm font-medium transition-colors',
+                      currentDay === day ? 'bg-pink-50 text-pink-600' : 'text-rose-700 hover:bg-pink-50/50',
+                    ].join(' ')}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span>{formatDayLabel(day)}</span>
+                      {currentDay === day && (
+                        <span className="h-2 w-2 rounded-full bg-pink-500" />
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
         </div>
 
@@ -434,12 +490,6 @@ export default function Home() {
                       {formatTime(tl)}
                     </div>
                     <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleResetTimer(timer.id, timer.number)}
-                        className="h-9 px-3 rounded-lg border border-pink-200 bg-pink-50 text-xs font-medium text-pink-500 transition-all duration-200 hover:bg-pink-100 hover:text-pink-600 active:scale-[0.98]"
-                      >
-                        重置
-                      </button>
                       <button
                         onClick={() => handleRemoveTimer(timer.id, timer.number)}
                         className="h-9 px-3 rounded-lg bg-rose-50 text-xs font-medium text-rose-500 transition-all duration-200 hover:bg-rose-100 active:scale-[0.98]"
