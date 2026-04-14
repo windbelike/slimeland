@@ -4,4 +4,4 @@ pages_build_output_dir = ".vercel/output/static"
 
 [[kv_namespaces]]
 binding = "KV"
-id = "YOUR_KV_NAMESPACE_ID"
+id = "bfa7e45893854384b10a0fc8428bb91d"
