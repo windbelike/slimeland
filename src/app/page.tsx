@@ -158,8 +158,6 @@ export default function Home() {
       if (data.success) {
         setTimers(data.timers);
         setSelectedNumber(null);
-        setHours(DEFAULT_HOURS);
-        setMinutes(DEFAULT_MINUTES);
         showToast(`编号 ${newTimer.number} 的计时器添加成功`);
         loadHistory();
       } else {
