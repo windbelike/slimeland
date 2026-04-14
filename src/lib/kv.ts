@@ -8,8 +8,28 @@ interface Timer {
 
 let _kv: KVNamespace | null = null;
 const memoryStore = new Map<string, string>();
+let seeded = false;
+
+function seedMockData() {
+  if (seeded) return;
+  seeded = true;
+  const now = Date.now();
+  for (let i = 1; i <= 10; i++) {
+    const d = new Date(now - i * 24 * 60 * 60 * 1000);
+    const dayKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const timers: Timer[] = Array.from({ length: 3 }, (_, idx) => ({
+      id: now - i * 86400000 + idx * 1000,
+      number: String((i + idx) % 20).padStart(2, '0'),
+      initialTime: 7200,
+      startTime: now - i * 86400000 + idx * 1000,
+      expiresAt: now - i * 86400000 + idx * 1000 + 7200 * 1000,
+    }));
+    memoryStore.set(`timers:${dayKey}`, JSON.stringify(timers));
+  }
+}
 
 function getInMemoryKV(): KVNamespace {
+  seedMockData();
   return {
     get: async (key: string) => memoryStore.get(key) || null,
     put: async (key: string, value: string) => {
