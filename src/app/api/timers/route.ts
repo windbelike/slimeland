@@ -1,5 +1,5 @@
-import { getRequestContext } from '@cloudflare/next-on-pages';
 import { NextResponse } from 'next/server';
+import { getTimers, saveTimers } from '@/lib/kv';
 
 export const runtime = 'edge';
 
@@ -11,15 +11,11 @@ interface Timer {
   expiresAt: number;
 }
 
-const KV_KEY = 'timers';
-
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const dayKey = searchParams.get('day') || 'today';
-    const { env } = getRequestContext();
-    const data = await env.KV.get(`${KV_KEY}:${dayKey}`);
-    const timers: Timer[] = data ? JSON.parse(data) : [];
+    const timers = await getTimers(dayKey);
     return NextResponse.json({ timers, dayKey });
   } catch (error) {
     console.error('KV GET error:', error);
@@ -29,15 +25,12 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json() as { timer: Timer; dayKey: string };
+    const body = (await request.json()) as { timer: Timer; dayKey: string };
     const { timer, dayKey } = body;
-    const { env } = getRequestContext();
 
-    const key = `${KV_KEY}:${dayKey}`;
-    const existing = await env.KV.get(key);
-    const timers: Timer[] = existing ? JSON.parse(existing) : [];
+    const timers = await getTimers(dayKey);
     timers.push(timer);
-    await env.KV.put(key, JSON.stringify(timers));
+    await saveTimers(dayKey, timers);
 
     return NextResponse.json({ success: true, timers });
   } catch (error) {
@@ -51,13 +44,10 @@ export async function DELETE(request: Request) {
     const { searchParams } = new URL(request.url);
     const id = Number(searchParams.get('id'));
     const dayKey = searchParams.get('day') || 'today';
-    const { env } = getRequestContext();
 
-    const key = `${KV_KEY}:${dayKey}`;
-    const existing = await env.KV.get(key);
-    let timers: Timer[] = existing ? JSON.parse(existing) : [];
+    let timers = await getTimers(dayKey);
     timers = timers.filter((t: Timer) => t.id !== id);
-    await env.KV.put(key, JSON.stringify(timers));
+    await saveTimers(dayKey, timers);
 
     return NextResponse.json({ success: true, timers });
   } catch (error) {
@@ -71,16 +61,13 @@ export async function PATCH(request: Request) {
     const { searchParams } = new URL(request.url);
     const id = Number(searchParams.get('id'));
     const dayKey = searchParams.get('day') || 'today';
-    const { env } = getRequestContext();
 
-    const key = `${KV_KEY}:${dayKey}`;
-    const existing = await env.KV.get(key);
-    let timers: Timer[] = existing ? JSON.parse(existing) : [];
+    let timers = await getTimers(dayKey);
     const now = Date.now();
     timers = timers.map((t: Timer) =>
       t.id === id ? { ...t, startTime: now, expiresAt: now + t.initialTime * 1000 } : t
     );
-    await env.KV.put(key, JSON.stringify(timers));
+    await saveTimers(dayKey, timers);
 
     return NextResponse.json({ success: true, timers });
   } catch (error) {
