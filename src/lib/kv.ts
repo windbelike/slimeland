@@ -1,5 +1,3 @@
-import { getRequestContext } from '@cloudflare/next-on-pages';
-
 interface Timer {
   id: number;
   number: string;
@@ -26,10 +24,11 @@ function getInMemoryKV(): KVNamespace {
   } as unknown as KVNamespace;
 }
 
-function getKV(): KVNamespace {
+async function getKV(): Promise<KVNamespace> {
   if (_kv) return _kv;
 
   try {
+    const { getRequestContext } = await import('@cloudflare/next-on-pages');
     const { env } = getRequestContext();
     if (env && env.KV) {
       _kv = env.KV as KVNamespace;
@@ -44,18 +43,18 @@ function getKV(): KVNamespace {
 }
 
 export async function getTimers(dayKey: string): Promise<Timer[]> {
-  const kv = getKV();
+  const kv = await getKV();
   const data = await kv.get(`timers:${dayKey}`);
   return data ? JSON.parse(data) : [];
 }
 
 export async function saveTimers(dayKey: string, timers: Timer[]) {
-  const kv = getKV();
+  const kv = await getKV();
   await kv.put(`timers:${dayKey}`, JSON.stringify(timers));
 }
 
 export async function getHistoryDays(): Promise<string[]> {
-  const kv = getKV();
+  const kv = await getKV();
   const list = await kv.list({ prefix: 'timers:' });
   return (list.keys as { name: string }[])
     .map(k => k.name.replace('timers:', ''))
