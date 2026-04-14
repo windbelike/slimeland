@@ -164,7 +164,7 @@ export default function Home() {
         setSelectedNumber(null);
         setHours(DEFAULT_HOURS);
         setMinutes(DEFAULT_MINUTES);
-        showToast(`✨ 编号 ${newTimer.number} 的计时器添加成功！`);
+        showToast(`编号 ${newTimer.number} 的计时器添加成功`);
         loadHistory();
       } else {
         showToast('添加失败，请重试');
@@ -183,7 +183,7 @@ export default function Home() {
       const data = (await res.json()) as { success: boolean; timers: Timer[] };
       if (data.success) {
         setTimers(data.timers);
-        showToast(`🗑️ 编号 ${number} 已移除`);
+        showToast(`编号 ${number} 已移除`);
       } else {
         showToast('移除失败，请重试');
       }
@@ -201,7 +201,7 @@ export default function Home() {
       const data = (await res.json()) as { success: boolean; timers: Timer[] };
       if (data.success) {
         setTimers(data.timers);
-        showToast(`🔄 编号 ${number} 已重置`);
+        showToast(`编号 ${number} 已重置`);
       } else {
         showToast('重置失败，请重试');
       }
@@ -241,20 +241,13 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-[#FFF0F5] via-[#FFF5F7] to-[#FFFAFB] text-rose-900 px-4 py-6 sm:px-8 sm:py-10">
-      {/* 背景装饰 */}
-      <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
-        <div className="absolute -top-20 -left-20 w-72 h-72 bg-pink-300/20 rounded-full blur-3xl animate-pulse-soft" />
-        <div className="absolute top-1/3 right-0 w-96 h-96 bg-rose-300/15 rounded-full blur-3xl animate-pulse-soft" style={{ animationDelay: '1s' }} />
-        <div className="absolute bottom-0 left-1/3 w-80 h-80 bg-pink-200/20 rounded-full blur-3xl animate-pulse-soft" style={{ animationDelay: '2s' }} />
-      </div>
-
+    <main className="min-h-screen bg-[#FFF5F7] text-rose-900 px-4 py-8 sm:px-8 sm:py-12">
       {/* Toasts */}
       <div className="fixed top-4 right-4 z-50 flex flex-col gap-3">
         {toasts.map(toast => (
           <div
             key={toast.id}
-            className="animate-slideIn flex items-center gap-3 rounded-2xl bg-white/95 backdrop-blur-md border border-pink-200 px-4 py-3 shadow-lg shadow-pink-200/30"
+            className="animate-slideIn flex items-center gap-3 rounded-xl bg-white/90 backdrop-blur-md border border-pink-200/70 px-4 py-3 shadow-lg"
           >
             <span className="inline-flex h-2 w-2 rounded-full bg-pink-500" />
             <span className="text-sm font-medium text-rose-800">{toast.message}</span>
@@ -264,21 +257,18 @@ export default function Home() {
 
       <div className="mx-auto max-w-4xl">
         {/* 标题 */}
-        <div className="mb-8 text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-pink-400 to-rose-400 text-white text-2xl shadow-lg shadow-pink-300/50 mb-4 animate-float">
-            🎀
-          </div>
-          <h1 className="text-3xl sm:text-5xl font-bold tracking-tight bg-gradient-to-r from-pink-500 to-rose-500 bg-clip-text text-transparent">
-            萌萌计时器
+        <div className="mb-10 text-center">
+          <h1 className="text-4xl sm:text-5xl font-semibold tracking-tight bg-gradient-to-r from-pink-500 to-rose-500 bg-clip-text text-transparent">
+            SlimeLand 计时器
           </h1>
-          <p className="mt-2 text-rose-400 text-sm sm:text-base font-medium">
-            选择可爱编号，记录每一天的美好时光 ✨
+          <p className="mt-2 text-rose-400 text-sm sm:text-base font-light">
+            选择编号，设定时间，开始倒计时。
           </p>
         </div>
 
         {/* 日期切换 */}
         <div className="mb-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          <div className="flex-1 rounded-2xl border border-pink-200 bg-white/70 backdrop-blur-sm px-5 py-3 shadow-sm">
+          <div className="flex-1 rounded-2xl border border-pink-200 bg-white/60 backdrop-blur-sm px-5 py-3 shadow-sm">
             <div className="flex items-center justify-between">
               <span className="text-sm font-semibold text-rose-600">
                 {formatDayLabel(currentDay)}
@@ -292,7 +282,7 @@ export default function Home() {
             <select
               value={currentDay}
               onChange={e => handleSwitchDay(e.target.value)}
-              className="h-12 px-4 rounded-2xl border border-pink-200 bg-white/70 text-rose-700 text-sm font-medium shadow-sm outline-none focus:border-pink-400"
+              className="h-12 px-4 rounded-2xl border border-pink-200 bg-white/60 text-rose-700 text-sm font-medium shadow-sm outline-none focus:border-pink-400"
             >
               <option value={getDayKey()}>今天</option>
               {historyDays.map(day => (
@@ -305,11 +295,11 @@ export default function Home() {
         </div>
 
         {/* 编号选择器 */}
-        <div className="mb-6 rounded-3xl border border-pink-200 bg-white/60 backdrop-blur-sm p-5 sm:p-6 shadow-sm">
+        <div className="mb-8 rounded-2xl border border-pink-200 bg-white/60 backdrop-blur-sm p-5 sm:p-6 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
-            <span className="text-sm font-bold text-rose-600">选择编号</span>
+            <span className="text-sm font-semibold text-rose-600">选择编号</span>
             {selectedNumber && (
-              <span className="text-xs font-bold text-pink-500 bg-pink-100 px-3 py-1 rounded-full">
+              <span className="text-xs font-semibold text-pink-500 bg-pink-100 px-3 py-1 rounded-full">
                 已选：{selectedNumber}
               </span>
             )}
@@ -324,17 +314,17 @@ export default function Home() {
                   onClick={() => !isActive && setSelectedNumber(num)}
                   disabled={isActive}
                   className={[
-                    'relative h-12 sm:h-14 rounded-2xl text-sm sm:text-base font-bold transition-all duration-200',
+                    'relative h-12 sm:h-14 rounded-xl text-sm sm:text-base font-medium transition-all duration-200',
                     isSelected
-                      ? 'bg-gradient-to-br from-pink-400 to-rose-400 text-white shadow-lg shadow-pink-300/50 scale-105'
+                      ? 'bg-pink-500 text-white shadow-lg shadow-pink-300/40'
                       : isActive
                       ? 'bg-pink-100/60 text-pink-300 cursor-not-allowed'
-                      : 'bg-white text-rose-500 hover:bg-pink-50 hover:text-pink-600 border border-pink-200 shadow-sm',
+                      : 'bg-white text-rose-600 hover:bg-pink-50 hover:text-pink-600 border border-pink-200 shadow-sm',
                   ].join(' ')}
                 >
                   {num}
                   {isActive && (
-                    <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-pink-300" />
+                    <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-pink-300" />
                   )}
                 </button>
               );
@@ -343,8 +333,8 @@ export default function Home() {
         </div>
 
         {/* 时间输入 & 添加 */}
-        <div className="mb-8 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
-          <div className="flex items-center justify-center gap-3 rounded-3xl border border-pink-200 bg-white/60 backdrop-blur-sm px-5 py-4 shadow-sm">
+        <div className="mb-10 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+          <div className="flex items-center justify-center gap-3 rounded-2xl border border-pink-200 bg-white/60 backdrop-blur-sm px-5 py-4 shadow-sm">
             <div className="flex items-center gap-2">
               <input
                 type="number"
@@ -352,9 +342,9 @@ export default function Home() {
                 max={23}
                 value={hours}
                 onChange={e => setHours(Math.max(0, Math.min(23, parseInt(e.target.value, 10) || 0)))}
-                className="h-12 w-20 rounded-2xl bg-pink-50 text-center text-2xl font-bold text-rose-700 outline-none ring-0 border border-pink-200 focus:border-pink-400 transition-colors"
+                className="h-12 w-20 rounded-xl bg-pink-50 text-center text-2xl font-medium text-rose-700 outline-none ring-0 border border-pink-200 focus:border-pink-400 transition-colors"
               />
-              <span className="text-rose-400 text-sm font-bold">时</span>
+              <span className="text-rose-400 text-sm font-medium">时</span>
             </div>
             <span className="text-pink-300 text-xl">:</span>
             <div className="flex items-center gap-2">
@@ -364,18 +354,18 @@ export default function Home() {
                 max={59}
                 value={minutes}
                 onChange={e => setMinutes(Math.max(0, Math.min(59, parseInt(e.target.value, 10) || 0)))}
-                className="h-12 w-20 rounded-2xl bg-pink-50 text-center text-2xl font-bold text-rose-700 outline-none ring-0 border border-pink-200 focus:border-pink-400 transition-colors"
+                className="h-12 w-20 rounded-xl bg-pink-50 text-center text-2xl font-medium text-rose-700 outline-none ring-0 border border-pink-200 focus:border-pink-400 transition-colors"
               />
-              <span className="text-rose-400 text-sm font-bold">分</span>
+              <span className="text-rose-400 text-sm font-medium">分</span>
             </div>
           </div>
 
           <button
             onClick={handleAddTimer}
             disabled={isLoading}
-            className="w-full h-16 sm:h-[58px] rounded-3xl bg-gradient-to-r from-pink-400 to-rose-400 text-white font-bold text-lg transition-all duration-200 hover:shadow-lg hover:shadow-pink-300/50 active:scale-[0.98] disabled:opacity-60"
+            className="w-full h-16 sm:h-[58px] rounded-xl bg-pink-500 text-white font-semibold text-lg transition-all duration-200 hover:bg-pink-400 hover:shadow-lg hover:shadow-pink-300/40 active:scale-[0.98] disabled:opacity-60"
           >
-            {isLoading ? '加载中...' : '✨ 添加计时器'}
+            {isLoading ? '加载中...' : '添加计时器'}
           </button>
         </div>
 
@@ -388,27 +378,26 @@ export default function Home() {
             return (
               <div
                 key={timer.id}
-                className="group relative overflow-hidden rounded-3xl border border-pink-200 bg-white/70 backdrop-blur-sm transition-all duration-300 hover:border-pink-300 hover:bg-white shadow-sm"
+                className="group relative overflow-hidden rounded-2xl border border-pink-200 bg-white/70 backdrop-blur-sm transition-all duration-300 hover:border-pink-300 hover:bg-white shadow-sm"
               >
                 {/* 进度条 */}
                 <div
-                  className="absolute bottom-0 left-0 h-2 rounded-full transition-all duration-1000"
+                  className="absolute bottom-0 left-0 h-2 transition-all duration-1000"
                   style={{
                     width: `${pct}%`,
-                    background: isDone
-                      ? 'linear-gradient(90deg, #f43f5e, #fb7185)'
-                      : 'linear-gradient(90deg, #f472b6, #fb7185)',
+                    backgroundColor: isDone ? '#f43f5e' : '#f472b6',
+                    opacity: 0.9,
                   }}
                 />
 
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 sm:p-6">
                   <div className="flex items-center gap-4">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-pink-100 to-rose-100 border border-pink-200 text-lg font-bold text-rose-600">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-pink-100 border border-pink-200 text-lg font-semibold text-rose-600">
                       {timer.number}
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs uppercase tracking-wider text-rose-400 font-bold">
+                        <span className="text-xs uppercase tracking-wider text-rose-400 font-semibold">
                           {formatStartTime(timer.startTime)} 开始
                         </span>
                         <span className="text-xs text-pink-300">•</span>
@@ -425,11 +414,11 @@ export default function Home() {
                         />
                         <span
                           className={[
-                            'text-sm font-bold',
+                            'text-sm font-medium',
                             isDone ? 'text-rose-500' : 'text-pink-500',
                           ].join(' ')}
                         >
-                          {isDone ? '时间到啦 🎉' : '进行中 ~'}
+                          {isDone ? '时间到' : '进行中'}
                         </span>
                       </div>
                     </div>
@@ -438,7 +427,7 @@ export default function Home() {
                   <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-6 w-full sm:w-auto">
                     <div
                       className={[
-                        'text-3xl sm:text-4xl font-bold tracking-tight tabular-nums',
+                        'text-3xl sm:text-4xl font-medium tracking-tight tabular-nums',
                         isDone ? 'text-rose-500' : 'text-rose-700',
                       ].join(' ')}
                     >
@@ -447,13 +436,13 @@ export default function Home() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleResetTimer(timer.id, timer.number)}
-                        className="h-9 px-3 rounded-xl border border-pink-200 bg-pink-50 text-xs font-bold text-pink-500 transition-all duration-200 hover:bg-pink-100 hover:text-pink-600 active:scale-[0.98]"
+                        className="h-9 px-3 rounded-lg border border-pink-200 bg-pink-50 text-xs font-medium text-pink-500 transition-all duration-200 hover:bg-pink-100 hover:text-pink-600 active:scale-[0.98]"
                       >
                         重置
                       </button>
                       <button
                         onClick={() => handleRemoveTimer(timer.id, timer.number)}
-                        className="h-9 px-3 rounded-xl bg-rose-50 text-xs font-bold text-rose-500 transition-all duration-200 hover:bg-rose-100 active:scale-[0.98]"
+                        className="h-9 px-3 rounded-lg bg-rose-50 text-xs font-medium text-rose-500 transition-all duration-200 hover:bg-rose-100 active:scale-[0.98]"
                       >
                         移除
                       </button>
@@ -467,12 +456,23 @@ export default function Home() {
 
         {/* 空状态 */}
         {timers.length === 0 && !isLoading && (
-          <div className="mt-10 rounded-3xl border border-dashed border-pink-300 bg-white/60 p-10 text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-pink-100 border border-pink-200 text-2xl animate-float">
-              🐰
+          <div className="mt-10 rounded-2xl border border-dashed border-pink-300 bg-white/60 p-10 text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-pink-100 border border-pink-200">
+              <svg
+                width="28"
+                height="28"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                className="text-pink-400"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
             </div>
-            <p className="text-rose-600 font-bold">暂无计时器</p>
-            <p className="mt-1 text-sm text-rose-400">选一个编号，添加今天的第一个计时器吧 ~</p>
+            <p className="text-rose-600 font-medium">暂无计时器</p>
+            <p className="mt-1 text-sm text-rose-400">选择一个编号并添加计时器即可开始。</p>
           </div>
         )}
       </div>
