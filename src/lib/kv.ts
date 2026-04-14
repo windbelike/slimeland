@@ -14,7 +14,7 @@ function seedMockData() {
   if (seeded) return;
   seeded = true;
   const now = Date.now();
-  for (let i = 1; i <= 10; i++) {
+  for (let i = 1; i <= 9; i++) {
     const d = new Date(now - i * 24 * 60 * 60 * 1000);
     const dayKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     const timers: Timer[] = Array.from({ length: 3 }, (_, idx) => ({
