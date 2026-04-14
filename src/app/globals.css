@@ -5,8 +5,8 @@
 @tailwind utilities;
 
 :root {
-  --background: #F7F8FA;
-  --foreground: #1e293b;
+  --background: #FFF5F7;
+  --foreground: #831843;
 }
 
 @theme inline {
@@ -40,8 +40,8 @@ input[type="number"] {
 
 /* 自定义选中文本颜色 */
 ::selection {
-  background: rgba(20, 184, 166, 0.2);
-  color: #0f766e;
+  background: rgba(244, 114, 182, 0.25);
+  color: #831843;
 }
 
 @keyframes slideIn {
@@ -57,4 +57,32 @@ input[type="number"] {
 
 .animate-slideIn {
   animation: slideIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes pulse-soft {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
 }
