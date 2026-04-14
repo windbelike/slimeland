@@ -73,11 +73,22 @@ export async function saveTimers(dayKey: string, timers: Timer[]) {
   await kv.put(`timers:${dayKey}`, JSON.stringify(timers));
 }
 
+function getDayKey(timestamp: number = Date.now()): string {
+  const date = new Date(timestamp);
+  const hours = date.getHours();
+  if (hours < 6) {
+    const prev = new Date(timestamp - 24 * 60 * 60 * 1000);
+    return `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}-${String(prev.getDate()).padStart(2, '0')}`;
+  }
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
 export async function getHistoryDays(): Promise<string[]> {
   const kv = await getKV();
   const list = await kv.list({ prefix: 'timers:' });
+  const today = getDayKey();
   return (list.keys as { name: string }[])
     .map(k => k.name.replace('timers:', ''))
-    .filter(d => d !== 'today')
+    .filter(d => d !== 'today' && d !== today)
     .sort((a, b) => b.localeCompare(a));
 }
