@@ -8,7 +8,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body style={{ fontFamily: 'var(--font-roboto-flex)' }}>{children}</body>
+      <body>{children}</body>
     </html>
   )
 }

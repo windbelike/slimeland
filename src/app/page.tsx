@@ -1,15 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { playDingSound } from './sounds';
 
 interface Timer {
   id: number;
-  name: string;
-  timeLeft: number;
-  initialTime: number;
-  startTime: number;      // timestamp when timer started
-  pauseTime?: number;     // timestamp when timer was last saved (for background running)
+  number: string;
+  initialTime: number; // 秒
+  startTime: number;   // 时间戳
+  expiresAt: number;   // 时间戳
 }
 
 interface Toast {
@@ -17,69 +16,50 @@ interface Toast {
   message: string;
 }
 
-type SortMode = 'startTime' | 'timeLeft';
-
 const DEFAULT_HOURS = 2;
 const DEFAULT_MINUTES = 0;
-const STORAGE_KEY = 'countdown-timers';
+const STORAGE_KEY = 'countdown-timers-v3';
+const NUMBERS = Array.from({ length: 20 }, (_, i) => String(i).padStart(2, '0'));
 
-const SLIME_COLOR = {
-  primary: 'rgb(142, 207, 201)',
-  secondary: 'rgb(190, 229, 225)',
-  background: 'rgb(231, 245, 243)',
-  text: 'rgb(73, 116, 112)',
-  dark: 'rgb(45, 87, 83)',
-};
+function timeLeftOf(timer: Timer): number {
+  return Math.max(0, Math.floor((timer.expiresAt - Date.now()) / 1000));
+}
 
 export default function Home() {
   const [timers, setTimers] = useState<Timer[]>([]);
-  const [inputName, setInputName] = useState('');
+  const [selectedNumber, setSelectedNumber] = useState<string | null>(null);
   const [hours, setHours] = useState(DEFAULT_HOURS);
   const [minutes, setMinutes] = useState(DEFAULT_MINUTES);
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const [sortMode, setSortMode] = useState<SortMode>('startTime');
+  const [tick, setTick] = useState(0);
 
-  // Load and sync timers from localStorage with background time calculation
+  const showToast = useCallback((message: string) => {
+    const newToast = { id: Date.now(), message };
+    setToasts(prev => [...prev, newToast]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(toast => toast.id !== newToast.id));
+    }, 3000);
+  }, []);
+
+  // 从 localStorage 加载
   useEffect(() => {
     try {
       const savedTimers = localStorage.getItem(STORAGE_KEY);
       if (savedTimers) {
         const parsedTimers: Timer[] = JSON.parse(savedTimers);
-        
-        // Calculate elapsed time for each timer
-        const updatedTimers = parsedTimers.map(timer => {
-          if (timer.timeLeft <= 0) return timer;
-          
-          const now = Date.now();
-          const elapsedSeconds = timer.pauseTime 
-            ? Math.floor((now - timer.pauseTime) / 1000)
-            : 0;
-          
-          const newTimeLeft = Math.max(0, timer.timeLeft - elapsedSeconds);
-          
-          if (timer.timeLeft > 0 && newTimeLeft === 0) {
-            playDingSound();
-          }
-          
-          return {
-            ...timer,
-            timeLeft: newTimeLeft,
-            pauseTime: now
-          };
-        });
-
-        setTimers(updatedTimers);
-        // Only update localStorage if we actually changed something
-        if (JSON.stringify(updatedTimers) !== savedTimers) {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTimers));
-        }
+        const now = Date.now();
+        const anyExpired = parsedTimers.some(
+          t => t.expiresAt <= now && t.expiresAt > now - 5000
+        );
+        if (anyExpired) playDingSound();
+        setTimers(parsedTimers);
       }
     } catch (error) {
-      console.error("Failed to parse timers from localStorage", error);
+      console.error('Failed to parse timers from localStorage', error);
     }
-  }, []); // This effect runs only once when component mounts
+  }, []);
 
-  // Listen for storage events from other windows
+  // 监听其他窗口的 storage 事件
   useEffect(() => {
     const handleStorageChange = (event: StorageEvent) => {
       if (event.key === STORAGE_KEY && event.newValue !== null) {
@@ -87,7 +67,7 @@ export default function Home() {
           const newTimers = JSON.parse(event.newValue);
           setTimers(newTimers);
         } catch (error) {
-          console.error("Failed to parse timers from storage event", error);
+          console.error('Failed to parse timers from storage event', error);
         }
       }
     };
@@ -96,99 +76,63 @@ export default function Home() {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  // Timer countdown logic
+  // 全局 tick：有活跃计时器时每秒刷新 UI
   useEffect(() => {
-    const hasActiveTimers = timers.some(timer => timer.timeLeft > 0);
-    if (!hasActiveTimers) return;
+    const hasActive = timers.some(t => timeLeftOf(t) > 0);
+    if (!hasActive) return;
 
     const interval = setInterval(() => {
-      const now = Date.now();
-      setTimers(prevTimers => {
-        const updatedTimers = prevTimers.map(timer => {
-          if (timer.timeLeft <= 0) return timer;
-          if (timer.timeLeft === 1) {
-            playDingSound();
-          }
-          return {
-            ...timer,
-            timeLeft: timer.timeLeft - 1,
-            pauseTime: now
-          };
-        });
-
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTimers));
-        return updatedTimers;
-      });
+      setTick(v => v + 1);
     }, 1000);
 
     return () => clearInterval(interval);
   }, [timers]);
 
-  // Save timers to localStorage whenever they change
+  // 仅当 timers 数组变化时写 localStorage
   useEffect(() => {
-    if (timers.length > 0) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(timers));
-    } else {
-      // Don't remove from localStorage if there are no timers
-      const savedTimers = localStorage.getItem(STORAGE_KEY);
-      if (savedTimers && JSON.parse(savedTimers).length > 0) {
-        return; // Keep existing timers in localStorage
-      }
-      localStorage.removeItem(STORAGE_KEY);
-    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(timers));
   }, [timers]);
 
-  const showToast = (message: string) => {
-    const newToast = { id: Date.now(), message };
-    setToasts(prev => [...prev, newToast]);
-    setTimeout(() => {
-      setToasts(prev => prev.filter(toast => toast.id !== newToast.id));
-    }, 3000);
-  };
-  
   const handleAddTimer = () => {
-    const trimmedName = inputName.trim().slice(0, 20);
-    if (trimmedName === '') return;
-
-    const nameExists = timers.some(timer => timer.name.toLowerCase() === trimmedName.toLowerCase());
-    if (nameExists) {
-      showToast(`"${trimmedName}" already exists!`);
+    if (!selectedNumber) {
+      showToast('请先选择一个编号');
       return;
     }
 
-    const totalSeconds = (hours * 3600) + (minutes * 60);
+    if (timers.some(t => t.number === selectedNumber)) {
+      showToast(`编号 ${selectedNumber} 已在倒计时中`);
+      return;
+    }
+
+    const totalSeconds = hours * 3600 + minutes * 60;
     const now = Date.now();
     const newTimer: Timer = {
       id: now,
-      name: trimmedName,
-      timeLeft: totalSeconds,
+      number: selectedNumber,
       initialTime: totalSeconds > 0 ? totalSeconds : 1,
       startTime: now,
-      pauseTime: now
+      expiresAt: now + totalSeconds * 1000,
     };
-    setTimers(prevTimers => [...prevTimers, newTimer]);
-    setInputName('');
+
+    setTimers(prev => [...prev, newTimer]);
+    setSelectedNumber(null);
     setHours(DEFAULT_HOURS);
     setMinutes(DEFAULT_MINUTES);
   };
 
   const handleRemoveTimer = (id: number) => {
-    setTimers(prevTimers => prevTimers.filter(timer => timer.id !== id));
+    setTimers(prev => prev.filter(timer => timer.id !== id));
   };
 
   const handleResetTimer = (id: number) => {
     const now = Date.now();
-    setTimers(prevTimers =>
-      prevTimers.map(timer =>
+    setTimers(prev =>
+      prev.map(timer =>
         timer.id === id
-          ? { ...timer, timeLeft: timer.initialTime, startTime: now, pauseTime: now }
+          ? { ...timer, startTime: now, expiresAt: now + timer.initialTime * 1000 }
           : timer
       )
     );
-  };
-  
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setInputName(e.target.value);
   };
 
   const formatTime = (seconds: number) => {
@@ -201,209 +145,226 @@ export default function Home() {
       String(s).padStart(2, '0'),
     ].join(':');
   };
-  
+
   const formatStartTime = (timestamp: number) => {
     const date = new Date(timestamp);
-    const hours = date.getHours().toString().padStart(2, '0');
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    return `${hours}:${minutes}:00`;
+    return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
   };
 
-  const getSortedTimers = () => {
-    return [...timers].sort((a, b) => {
-      if (sortMode === 'startTime') {
-        return a.startTime - b.startTime; // Oldest first
-      } else {
-        return a.timeLeft - b.timeLeft; // Least time remaining first
-      }
-    });
-  };
+  const sortedTimers = useMemo(() => {
+    return [...timers].sort((a, b) => timeLeftOf(a) - timeLeftOf(b));
+  }, [timers, tick]);
 
-  const toggleSortMode = () => {
-    setSortMode(prev => prev === 'startTime' ? 'timeLeft' : 'startTime');
+  const progress = (secondsLeft: number, initialTime: number) => {
+    if (initialTime === 0) return 0;
+    return Math.max(0, Math.min(100, (secondsLeft / initialTime) * 100));
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center p-4 sm:p-8 bg-gradient-to-b from-[#E7F5F3] to-[#FFFFFF]">
-      <div className="fixed top-4 right-4 z-50 flex flex-col gap-2">
+    <main className="min-h-screen bg-[#F7F8FA] text-slate-800 px-4 py-8 sm:px-8 sm:py-12">
+      {/* 背景渐变 */}
+      <div className="fixed inset-0 -z-10">
+        <div className="absolute inset-0 bg-gradient-to-br from-[#F7F8FA] via-white to-[#F0F4F8]" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-teal-300/20 rounded-full blur-[120px]" />
+      </div>
+
+      {/* Toasts */}
+      <div className="fixed top-4 right-4 z-50 flex flex-col gap-3">
         {toasts.map(toast => (
           <div
             key={toast.id}
-            className="px-4 py-2 rounded-full shadow-lg flex items-center gap-2 animate-slideIn"
-            style={{
-              backgroundColor: SLIME_COLOR.primary,
-              color: 'white',
-            }}
+            className="animate-slideIn flex items-center gap-3 rounded-xl bg-white/90 backdrop-blur-md border border-slate-200/70 px-4 py-3 shadow-lg"
           >
-            <div className="w-2 h-2 rounded-full bg-white/50" />
-            {toast.message}
+            <span className="inline-flex h-2 w-2 rounded-full bg-teal-500" />
+            <span className="text-sm font-medium text-slate-700">{toast.message}</span>
           </div>
         ))}
       </div>
 
-      <h1 
-        className="text-3xl sm:text-5xl font-[700] mb-6 sm:mb-8 text-center relative"
-        style={{ 
-          color: SLIME_COLOR.text,
-          textShadow: `2px 2px 4px ${SLIME_COLOR.secondary}`,
-        }}
-      >
-        SlimeLand Timer
-        <span className="absolute -top-2 -right-2 w-4 h-4 rounded-full"
-          style={{ backgroundColor: SLIME_COLOR.secondary }}
-        />
-      </h1>
-      
-      <div className="flex flex-col items-center gap-4 mb-6 sm:mb-8 w-full max-w-xl">
-        <div className="flex flex-col sm:flex-row gap-4 items-center w-full">
-          <input
-            type="text"
-            placeholder="Enter a name"
-            value={inputName}
-            onChange={handleInputChange}
-            maxLength={20}
-            className="px-4 py-2 text-base sm:text-lg font-[400] rounded-full bg-white/70 border-2 focus:outline-none focus:ring-2 transition-all duration-300 w-full sm:w-60 placeholder-[#8EBDB7]"
-            style={{ 
-              borderColor: SLIME_COLOR.primary,
-              color: SLIME_COLOR.text,
-            }}
-          />
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-center">
-            <input
-              type="number"
-              min="0"
-              max="23"
-              value={hours}
-              onChange={(e) => setHours(Math.max(0, Math.min(23, parseInt(e.target.value, 10) || 0)))}
-              className="px-3 py-2 text-base sm:text-lg font-[400] rounded-full bg-white/70 border-2 focus:outline-none focus:ring-2 transition-all duration-300 w-20 text-center"
-              style={{ 
-                borderColor: SLIME_COLOR.primary,
-                color: SLIME_COLOR.text,
-              }}
-            />
-            <span className="text-base sm:text-lg font-[300]" style={{ color: SLIME_COLOR.text }}>h</span>
-            <input
-              type="number"
-              min="0"
-              max="59"
-              value={minutes}
-              onChange={(e) => setMinutes(Math.max(0, Math.min(59, parseInt(e.target.value, 10) || 0)))}
-              className="px-3 py-2 text-base sm:text-lg font-[400] rounded-full bg-white/70 border-2 focus:outline-none focus:ring-2 transition-all duration-300 w-20 text-center"
-              style={{ 
-                borderColor: SLIME_COLOR.primary,
-                color: SLIME_COLOR.text,
-              }}
-            />
-            <span className="text-base sm:text-lg font-[300]" style={{ color: SLIME_COLOR.text }}>m</span>
+      <div className="mx-auto max-w-4xl">
+        {/* 标题 */}
+        <div className="mb-10 text-center">
+          <h1 className="text-4xl sm:text-5xl font-semibold tracking-tight bg-gradient-to-r from-slate-800 to-slate-500 bg-clip-text text-transparent">
+            SlimeLand 计时器
+          </h1>
+          <p className="mt-2 text-slate-500 text-sm sm:text-base font-light">
+            选择编号，设定时间，开始倒计时。
+          </p>
+        </div>
+
+        {/* 编号选择器 */}
+        <div className="mb-8 rounded-2xl border border-slate-200/70 bg-white/60 backdrop-blur-sm p-5 sm:p-6 shadow-sm">
+          <div className="mb-4 flex items-center justify-between">
+            <span className="text-sm font-medium text-slate-600">选择编号</span>
+            {selectedNumber && (
+              <span className="text-xs font-semibold text-teal-600">
+                已选：{selectedNumber}
+              </span>
+            )}
+          </div>
+          <div className="grid grid-cols-5 gap-2 sm:gap-3">
+            {NUMBERS.map(num => {
+              const isSelected = selectedNumber === num;
+              const isActive = timers.some(t => t.number === num);
+              return (
+                <button
+                  key={num}
+                  onClick={() => !isActive && setSelectedNumber(num)}
+                  disabled={isActive}
+                  className={[
+                    'relative h-12 sm:h-14 rounded-xl text-sm sm:text-base font-medium transition-all duration-200',
+                    isSelected
+                      ? 'bg-teal-500 text-white shadow-[0_0_20px_rgba(20,184,166,0.35)]'
+                      : isActive
+                      ? 'bg-slate-200/70 text-slate-400 cursor-not-allowed'
+                      : 'bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-800 border border-slate-200 shadow-sm',
+                  ].join(' ')}
+                >
+                  {num}
+                  {isActive && (
+                    <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-slate-300" />
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
-        <div className="flex gap-2 w-full">
-          <button 
-            onClick={handleAddTimer}
-            className="px-6 py-2 text-base sm:text-lg font-[600] rounded-full transition-all duration-300 flex-1 hover:scale-[1.02] hover:shadow-lg active:scale-95 relative overflow-hidden"
-            style={{ 
-              backgroundColor: SLIME_COLOR.primary,
-              color: 'white',
-            }}
-          >
-            Add Timer
-            <div className="absolute top-0 left-0 w-full h-1 bg-white/20 rounded-full" />
-          </button>
-          <button
-            onClick={toggleSortMode}
-            className="px-4 py-2 text-sm sm:text-base font-[500] rounded-full transition-all duration-300 hover:scale-105 active:scale-95 flex items-center gap-2"
-            style={{ 
-              backgroundColor: SLIME_COLOR.secondary,
-              color: SLIME_COLOR.text,
-            }}
-          >
-            {sortMode === 'startTime' ? '⏰' : '⏳'}
-          </button>
-        </div>
-      </div>
 
-      <div className="w-full max-w-5xl">
-        
-        <div className="flex flex-col gap-4">
-          {getSortedTimers().map(timer => (
-            <div 
-              key={timer.id} 
-              className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between p-6 rounded-2xl shadow-lg gap-4 sm:gap-6 transition-all duration-300 hover:scale-[1.01] relative overflow-hidden"
-              style={{ 
-                backgroundColor: 'white',
-                border: `2px solid ${SLIME_COLOR.secondary}`,
-              }}
-            >
-              <div 
-                className="absolute top-0 left-0 h-full transition-all duration-300"
-                style={{ 
-                  width: `${(timer.timeLeft / (timer.initialTime || 1)) * 100}%`,
-                  backgroundColor: SLIME_COLOR.primary,
-                  opacity: 0.1,
-                }}
+        {/* 时间输入 & 添加 */}
+        <div className="mb-10 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+          <div className="flex items-center justify-center gap-3 rounded-2xl border border-slate-200/70 bg-white/60 backdrop-blur-sm px-5 py-4 shadow-sm">
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min={0}
+                max={23}
+                value={hours}
+                onChange={e => setHours(Math.max(0, Math.min(23, parseInt(e.target.value, 10) || 0)))}
+                className="h-12 w-20 rounded-xl bg-slate-50 text-center text-2xl font-medium text-slate-800 outline-none ring-0 border border-slate-200 focus:border-teal-500/60 transition-colors"
               />
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 relative">
-                <h2 className="text-xl sm:text-2xl font-[600] capitalize flex items-center gap-2" style={{ color: SLIME_COLOR.text }}>
-                  {timer.name}
-                  <span className="text-sm font-[400] opacity-60">
-                    ({formatTime(timer.initialTime)})
-                  </span>
-                </h2>
-                <div className="flex gap-2 items-center">
-                  <div className="w-2 h-2 rounded-full animate-pulse" 
-                    style={{ 
-                      backgroundColor: timer.timeLeft === 0 ? '#ff6b6b' : SLIME_COLOR.primary 
-                    }} 
-                  />
-                  <p className="text-sm font-[500]" 
-                    style={{ 
-                      color: timer.timeLeft === 0 ? '#ff6b6b' : SLIME_COLOR.primary,
-                      fontWeight: timer.timeLeft === 0 ? '600' : '500'
-                    }}
-                  >
-                    {timer.timeLeft === 0 ? "Time's up! started at " + formatStartTime(timer.startTime) : "Started at " + formatStartTime(timer.startTime)}
-                  </p>
-                </div>
-              </div>
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 w-full sm:w-auto relative">
-                <div className="text-3xl sm:text-4xl font-[500] tracking-wider" style={{ color: SLIME_COLOR.dark }}>
-                  {formatTime(timer.timeLeft)}
-                </div>
-                <div className="flex gap-2 w-full sm:w-auto">
-                  <button
-                    onClick={() => handleResetTimer(timer.id)}
-                    className="px-4 py-2 text-sm sm:text-base font-[500] rounded-full transition-all duration-300 flex-1 sm:flex-initial hover:scale-105 active:scale-95"
-                    style={{ 
-                      backgroundColor: SLIME_COLOR.secondary,
-                      color: SLIME_COLOR.text,
-                    }}
-                  >
-                    Reset
-                  </button>
-                  <button
-                    onClick={() => handleRemoveTimer(timer.id)}
-                    className="px-4 py-2 text-sm sm:text-base font-[500] rounded-full transition-all duration-300 flex-1 sm:flex-initial hover:scale-105 active:scale-95 bg-red-100 text-red-500 hover:bg-red-200"
-                  >
-                    Remove
-                  </button>
-                </div>
-              </div>
+              <span className="text-slate-500 text-sm font-medium">时</span>
             </div>
-          ))}
+            <span className="text-slate-300 text-xl">:</span>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min={0}
+                max={59}
+                value={minutes}
+                onChange={e => setMinutes(Math.max(0, Math.min(59, parseInt(e.target.value, 10) || 0)))}
+                className="h-12 w-20 rounded-xl bg-slate-50 text-center text-2xl font-medium text-slate-800 outline-none ring-0 border border-slate-200 focus:border-teal-500/60 transition-colors"
+              />
+              <span className="text-slate-500 text-sm font-medium">分</span>
+            </div>
+          </div>
+
+          <button
+            onClick={handleAddTimer}
+            className="w-full h-16 sm:h-[58px] rounded-2xl sm:rounded-xl bg-teal-500 text-white font-semibold text-lg transition-all duration-200 hover:bg-teal-400 hover:shadow-[0_0_24px_rgba(20,184,166,0.35)] active:scale-[0.98]"
+          >
+            添加计时器
+          </button>
         </div>
+
+        {/* 计时器列表 */}
+        <div className="flex flex-col gap-4">
+          {sortedTimers.map(timer => {
+            const tl = timeLeftOf(timer);
+            const pct = progress(tl, timer.initialTime);
+            const isDone = tl === 0;
+            return (
+              <div
+                key={timer.id}
+                className="group relative overflow-hidden rounded-2xl border border-slate-200/70 bg-white/70 backdrop-blur-sm transition-all duration-300 hover:border-teal-200/60 hover:bg-white shadow-sm"
+              >
+                {/* 进度条 */}
+                <div
+                  className="absolute bottom-0 left-0 h-1.5 transition-all duration-1000"
+                  style={{
+                    width: `${pct}%`,
+                    backgroundColor: isDone ? '#f43f5e' : '#2dd4bf',
+                    opacity: 0.9,
+                  }}
+                />
+
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 sm:p-6">
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-slate-100 border border-slate-200 text-lg font-semibold text-slate-700">
+                      {timer.number}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs uppercase tracking-wider text-slate-400 font-semibold">
+                          {formatStartTime(timer.startTime)} 开始
+                        </span>
+                        <span className="text-xs text-slate-300">•</span>
+                        <span className="text-xs text-slate-400">
+                          共 {formatTime(timer.initialTime)}
+                        </span>
+                      </div>
+                      <div className="mt-1 flex items-center gap-2">
+                        <span
+                          className={[
+                            'inline-block h-2 w-2 rounded-full',
+                            isDone ? 'bg-rose-500 animate-pulse' : 'bg-teal-400',
+                          ].join(' ')}
+                        />
+                        <span
+                          className={[
+                            'text-sm font-medium',
+                            isDone ? 'text-rose-500' : 'text-teal-600',
+                          ].join(' ')}
+                        >
+                          {isDone ? '时间到' : '进行中'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 sm:gap-4 sm:ml-auto">
+                    <div
+                      className={[
+                        'text-3xl sm:text-4xl font-medium tracking-tight tabular-nums',
+                        isDone ? 'text-rose-500' : 'text-slate-800',
+                      ].join(' ')}
+                    >
+                      {formatTime(tl)}
+                    </div>
+                    <button
+                      onClick={() => handleRemoveTimer(timer.id)}
+                      className="h-8 px-3 rounded-md bg-rose-50 text-xs font-medium text-rose-500 transition-all duration-200 hover:bg-rose-100 active:scale-[0.98]"
+                    >
+                      移除
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* 空状态 */}
+        {timers.length === 0 && (
+          <div className="mt-10 rounded-2xl border border-dashed border-slate-300 bg-white/60 p-10 text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 border border-slate-200">
+              <svg
+                width="28"
+                height="28"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                className="text-slate-400"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+            </div>
+            <p className="text-slate-600 font-medium">暂无计时器</p>
+            <p className="mt-1 text-sm text-slate-400">选择一个编号并添加计时器即可开始。</p>
+          </div>
+        )}
       </div>
-      {timers.length === 0 && (
-        <div className="text-center mt-8">
-          <p className="text-lg font-[300]" style={{ color: SLIME_COLOR.text }}>
-            No active timers. Add one to get started!
-          </p>
-          <div className="mt-4 w-16 h-16 rounded-full mx-auto animate-bounce"
-            style={{ backgroundColor: SLIME_COLOR.secondary }}
-          />
-        </div>
-      )}
     </main>
   );
 }
-
-
